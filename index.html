@@ -32,7 +32,7 @@
 </aside>
 <div class="mobile-overlay" id="mobileOverlay"></div>
 <main class="main"><header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="icon-btn mobile-menu" id="menuBtn" aria-label="Open navigation">☰</button><div class="crumb">REDATA <span style="color:#d4a078">/</span> <b id="crumbName">OVERVIEW</b></div></div><div class="top-actions"><div class="dataset-pill"><span class="led"></span><span id="activeDatasetName">demo_sales.csv</span></div><button class="btn small" data-view="import">＋ Import</button></div></header><div class="content" id="workspaceContent"></div></main>
-<div id="toastHost" aria-live="polite"></div><input id="fileInput" type="file" accept=".csv,.tsv,.txt,.json,.xlsx,.xls" hidden>
+<div id="toastHost" aria-live="polite"></div><input id="fileInput" type="file" accept=".csv,.tsv,.txt,.json,.ndjson,.jsonl,.xlsx,.xls" hidden>
 <script>
 (function(){
 "use strict";
@@ -117,7 +117,7 @@ function applyMissing(){const strategy=$("#fillStrategy").value;if(strategy==="l
 function dropDuplicates(){const before=data.length,seen=new Set();data=data.filter(r=>{const k=JSON.stringify(cols().map(c=>r[c]));if(seen.has(k))return false;seen.add(k);return true});toast("Removed "+(before-data.length)+" exact duplicate rows.");go("clean")}
 function trimText(){let changes=0;data=data.map(r=>{const o={...r};cols().forEach(c=>{if(typeof o[c]==="string"){const v=o[c].replace(/\s+/g," ").trim();if(v!==o[c])changes++;o[c]=v===""?null:v}});return o});toast("Normalized "+changes+" text cells.");go("clean")}
 function dropColumn(){const c=$("#dropColumn").value;if(!c)return;const ok=confirm("Remove column '"+c+"' from the working dataset? This does not change the original file.");if(!ok)return;data=data.map(r=>{const o={...r};delete o[c];return o});sortBy=null;filterState={column:"",query:""};toast("Removed column "+c);go("clean")}
-function runPivot(){const g=$("#pivotGroup").value,y=$("#pivotMeasure").value,ag=$("#pivotAgg").value;if(!g)return;lastPivotRows=pivotRows(g,y==="(count rows)"?g:y,ag);$("#pivotHost").innerHTML=genericTable(lastPivotRows)}
+function runPivot(){const g=$("#pivotGroup").value,y=$("#pivotMeasure").value;let ag=$("#pivotAgg").value;if(!g)return;if(y==="(count rows)")ag="count";lastPivotRows=pivotRows(g,y==="(count rows)"?g:y,ag);$("#pivotHost").innerHTML=genericTable(lastPivotRows)}
 function runSegments(){const g=$("#segmentField").value;lastSegments=segmentRows(g);$("#segmentsHost").innerHTML=segmentView(g)}
 function tsvRows(rows){return rows.map(r=>Object.values(r).map(v=>String(v??"").replace(/\t/g," ")).join("\t")).join("\n")}
 function exportStats(){download("redata-statistics.csv",new Blob([csvString(statisticsRows())],{type:"text/csv"}))}
