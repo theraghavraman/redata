@@ -33,7 +33,7 @@ Options: `--port 9000`, `--memory-limit 6GB`, `--threads 4`, `--workspace D:\red
 
 Measured on a small 2-core cloud machine with a 1 crore row, 10 column CSV (a typical laptop is faster):
 
-> **Evidence note:** These are measurements previously recorded in the project README. The current technical report has not independently reproduced them yet; treat them as project-reported figures until the benchmark protocol is run against a pinned commit and raw logs are published. See [the technical report draft](docs/TECHNICAL_REPORT_DRAFT.md) and [benchmark protocol](docs/BENCHMARK_PROTOCOL.md).
+> **Evidence note:** These are measurements previously recorded in the project README. The current technical report has not independently reproduced them yet. A separate CI smoke benchmark has now exercised the actual local engine at 100,000 and 1,000,000 rows, with raw results preserved in [the benchmark results directory](benchmarks/results/). Those bounded results do not reproduce these historical timings; keep the figures below labeled as project-reported until each workload is rerun with pinned source, raw logs, and the original conditions. See [the technical report draft](docs/TECHNICAL_REPORT_DRAFT.md) and [benchmark protocol](docs/BENCHMARK_PROTOCOL.md).
 
 | Step | Time |
 | --- | --- |
