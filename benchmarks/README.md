@@ -38,3 +38,14 @@ See [the benchmark protocol](../docs/BENCHMARK_PROTOCOL.md).
 - The generator itself does not launch ReData, collect browser memory, or benchmark the local engine.
 - Do not describe a dataset as successfully processed by ReData until the corresponding application run has been completed and recorded.
 - Use only public or appropriately licensed datasets; never publish confidential data.
+
+## Generator regression tests
+
+The standard-library regression tests validate output shape, metadata/checksum consistency, same-seed CSV reproducibility, and invalid-argument safeguards. Run them from the repository root:
+
+```bash
+python -m py_compile benchmarks/generate_dataset.py tests/test_generate_dataset.py
+python -m unittest discover -s tests -p "test_generate_dataset.py" -v
+```
+
+The GitHub Actions workflow at `.github/workflows/benchmark-generator-tests.yml` runs these checks on relevant pushes and pull requests. Passing these tests validates the generator artifact only; it is not a ReData application test and provides no performance result.
