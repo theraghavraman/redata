@@ -62,3 +62,10 @@ Create one record per run with these fields:
 ## Completion criteria
 
 The report can move from draft to evaluated status only when the tested version, data, environment, raw observations, correctness checks, failures, and reproducibility instructions are documented. Independent reproduction should be labeled separately from the author's own test runs.
+
+
+## Licensing and publication checks
+
+- Cite the tested ReData source revision and use the repository's applicable software/documentation license notices.
+- Ensure generated datasets and benchmark artifacts are safe to publish and have compatible licenses.
+- For redistribution, review [Third-Party Notices](../THIRD_PARTY_NOTICES.md), resolve dependency versions, and audit transitive/native dependencies and bundled assets. The current inventory is not a complete SBOM.
