@@ -79,7 +79,7 @@ Use the repository's standard-library generator to create repeatable CSV inputs:
 python benchmarks/generate_dataset.py --output /tmp/redata-100k.csv --rows 100000 --columns 10 --seed 20261012 --cardinality 1000 --missing-rate 0.01
 ```
 
-The generator emits a JSON sidecar with parameters, byte size, and SHA-256. Retain the CSV and sidecar for each run. See [benchmark assets and usage](../benchmarks/README.md). The generator creates inputs only; it does not run ReData or establish performance results.
+The generator emits a JSON sidecar with parameters, byte size, and SHA-256. Retain the CSV and sidecar for each run. See [benchmark assets and usage](../benchmarks/README.md). The generator creates inputs only; it does not run ReData or establish performance results. The companion [local-engine smoke runner](../benchmarks/run_engine_smoke.py) executes a bounded real-engine API workload and records its measurements and correctness checks. Existing CI observations are preserved in [the results directory](../benchmarks/results/).
 
 
 ## Local-engine smoke baseline
