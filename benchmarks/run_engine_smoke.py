@@ -186,6 +186,39 @@ def main() -> int:
             if int(page["rows"][0]["id"]) != 0:
                 raise AssertionError(f"Unexpected first paged row: {page['rows'][0]}")
 
+            # Validate grouped aggregation against an independent Python oracle.
+            aggregate = request(
+                base_url + "/api/aggregate", token,
+                {"g": "category", "y": "value", "agg": "sum", "order": "asc",
+                 "limit": 1000, "groups": True},
+            )
+            expected_groups = min(args.rows, max(1, min(args.rows, 1000)))
+            if int(aggregate.get("groups", -1)) != expected_groups:
+                raise AssertionError(f"Unexpected group count: {aggregate}")
+            category_zero = next((g for g in aggregate.get("rows", []) if g["label"] == "category_0"), None)
+            if category_zero is None:
+                raise AssertionError("Aggregation omitted category_0")
+            expected_category_zero = math.fsum(
+                round(((i * 7919) % 1000003) / 100.0, 4)
+                for i in range(args.rows) if i % max(1, min(args.rows, 1000)) == 0
+            )
+            if not math.isclose(float(category_zero["value"]), expected_category_zero, rel_tol=1e-10, abs_tol=1e-5):
+                raise AssertionError(
+                    f"category_0 aggregate mismatch: expected {expected_category_zero}, got {category_zero['value']}"
+                )
+
+            # Verify the SQL lab rejects mutations and that the dataset remains queryable.
+            try:
+                request(base_url + "/api/sql", token, {"query": "DROP TABLE data"})
+                raise AssertionError("Read-only SQL API unexpectedly accepted DROP TABLE")
+            except urllib.error.HTTPError as exc:
+                error_text = exc.read().decode("utf-8", "replace")
+                if exc.code != 400 or "read-only" not in error_text.lower():
+                    raise AssertionError(f"Unexpected response for rejected mutation: {exc.code} {error_text}") from exc
+            still_loaded = request(base_url + "/api/sql", token, {"query": "SELECT COUNT(*) AS n FROM data"})
+            if int(still_loaded["rows"][0]["n"]) != args.rows:
+                raise AssertionError("Dataset changed after rejected SQL mutation")
+
             # Capture approximate sampled engine-process RSS through the final request.
             monitor_stop.set()
             monitor_thread.join(timeout=1)
@@ -217,6 +250,11 @@ def main() -> int:
                 "sql_query_ms": [round(x, 3) for x in query_ms],
                 "sql_query_median_ms": round(sorted(query_ms)[len(query_ms) // 2], 3),
                 "page_5_rows_ms": round(page_ms, 3),
+                "aggregate_group_count": aggregate.get("groups"),
+                "aggregate_category_zero_expected": expected_category_zero,
+                "aggregate_category_zero_observed": float(category_zero["value"]),
+                "aggregate_category_zero_matches": True,
+                "read_only_sql_mutation_rejected": True,
                 "correctness": {
                     "row_count": int(row["n"]) == args.rows,
                     "column_count": len(meta["columns"]) == args.columns,
