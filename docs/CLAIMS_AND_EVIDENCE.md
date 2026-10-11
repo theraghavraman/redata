@@ -21,7 +21,7 @@ This is a documentation-level review of the repository's current README and rese
 | Database and API connections | README describes local-engine connections and scheduled sync modes | "The README documents connection and sync workflows." | Integration tests against controlled fixtures or test services; tests for pagination, incremental cursors, upserts, secrets handling, retries and failure logs |
 | Browser-only row capacity | README states a practical limit of up to 1,000,000 rows | Treat as a documented operating guideline, not a universal capacity guarantee | Pinned browser/device, datasets, repeat runs, memory observations, correctness checks and failure boundaries |
 | Local-engine large-file capacity | README reports a 10-million-row / 723 MB CSV test | Treat as a project-reported test claim until its environment, input, exact commit and raw logs are available | Re-run on a pinned commit; publish dataset checksum, environment, commands, raw timings, memory method, correctness checks and failures |
-| Performance figures | README contains historical timings for import/profile, navigation, filtering, analytics, grouping, transformations and export | Label every figure "project-reported; not independently reproduced in the current report" | Reproduce each workload separately and publish raw repeated observations with precise timing boundaries |
+| Performance figures | README contains historical timings; a 100,000-row CI smoke run now exercises the real local-engine HTTP API | Keep historical README figures labeled "project-reported; not independently reproduced". The 100,000-row result is an environment-specific baseline only. | Reproduce each historical workload separately and publish raw repeated observations with precise timing boundaries; scale up on controlled hardware |
 | Analytical correctness | Report's RQ1 requires independent reference comparisons; no results are recorded yet | Do not claim correctness from successful rendering or execution alone | Fixed fixtures with expected outputs, independent calculations, tolerances and explicit pass/fail results |
 | Comparative claims | No controlled comparison with Tableau, Power BI, or other tools is established by this report | Do not claim parity, superiority, or equivalent features | Predefined representative tasks, comparable versions/environments, clear criteria and reproducible measurements |
 | Research impact | Repository and report are public artifacts; no citation or adoption evidence is established here | Describe the project and its intended contribution, not proven impact | Verifiable external citations, independent use, review, or other attributable evidence |
@@ -31,6 +31,13 @@ This is a documentation-level review of the repository's current README and rese
 ReData is an open-source effort to consolidate selected data-ingestion, inspection, transformation, querying, visualization and reporting workflows in a browser-oriented workspace, with an optional local DuckDB engine for supported workloads. The project is evaluating correctness, resource behavior, responsiveness, execution-mode differences and reproducibility.
 
 This is a scope statement, not a claim that all listed operations have passed independent tests or that ReData is equivalent or superior to commercial analytics products.
+
+
+## Initial execution evidence
+
+A bounded 100,000-row smoke benchmark passed on GitHub Actions at [run 38175393938](https://github.com/theraghavraman/redata/actions/runs/38175393938), source commit `8d73fa1ac461fe4ac06affc36bfcb26905efb7ee`. The generated CSV was 10,374,347 bytes. The run measured 272.050 ms for import plus profiling, 1.066 ms median for five SQL aggregate HTTP requests, and 2.909 ms for a five-row page request. It validated row/column counts, ID range, an independent sum check, and rejection of an unauthenticated status request. Full environment and checksum details are in the technical report's Section 6.1 and the workflow's JSON artifact.
+
+A separate 1,000,000-row CI run is being attempted to extend the baseline. Its result must be added only after the workflow completes successfully and the uploaded JSON has been inspected. Neither smoke run, by itself, independently reproduces the README's historical 10-million-row timings.
 
 ## Minimum evidence package for performance findings
 
