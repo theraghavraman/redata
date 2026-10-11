@@ -70,6 +70,7 @@ The JSON output records the source commit when supplied by CI, Python/platform/D
 Two successful GitHub-hosted local-engine smoke runs have their raw JSON committed for long-term review:
 
 - [100,000 rows](results/ci-smoke-100k-8d73fa1.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175393938)
-- [1,000,000 rows](results/ci-smoke-1m-32fe7af.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175438341)
+- [1,000,000 rows × 10 columns](results/ci-smoke-1m-32fe7af.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175438341)
+- [10,000,000 rows × 7 columns](results/ci-smoke-10m-27e1126.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175528927)
 
-These are single-run observations on a hosted runner, not a multi-machine benchmark or reproduction of the README's historical 10-million-row figures. The JSON files record environment, dataset checksum, individual query timings, and correctness checks. The workflow also uploads the same result as an artifact; GitHub artifacts are temporary, so the committed JSON is the durable record.
+These are single-run observations on a hosted runner, not a multi-machine benchmark. The 10-million-row result uses seven columns, so it is not a reproduction of the README's 10-million-row, 10-column claim. A matching 10M/10-column run is being tested separately. The JSON files record environment, dataset checksum, individual query timings, and correctness checks. The workflow also uploads the same result as an artifact; GitHub artifacts are temporary, so the committed JSON is the durable record.
