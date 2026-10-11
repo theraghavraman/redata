@@ -1,44 +1,51 @@
-# Sample workflow for building and deploying a Jekyll site to GitHub Pages
-name: Deploy Jekyll with GitHub Pages dependencies preinstalled
+# Deploy ReData as a plain static HTML application (no Jekyll transform).
+name: Deploy ReData to GitHub Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./
-          destination: ./_site
-      - name: Upload artifact
+      - name: Validate static app entry points
+        shell: bash
+        run: |
+          test -s index.html
+          test -s assets/redata.svg
+          test -s engine/redata_engine.py
+          test -s engine/requirements.txt
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("index.html").read_text(encoding="utf-8")
+          assert "<!doctype html>" in html.lower(), "index.html is missing its HTML doctype"
+          assert 'id="workspaceContent"' in html, "workspace mount point is missing"
+          assert "function renderSpaceFormats()" in html, "Space Explorer renderer is missing"
+          assert "function inspectSpaceFile(file)" in html, "Space Explorer inspector is missing"
+          assert "function init()" in html, "application initializer is missing"
+          assert html.rstrip().lower().endswith("</html>"), "index.html is not closed"
+          print("Static app entry-point checks passed.")
+          PY
+      - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
 
-  # Deployment job
   deploy:
     environment:
       name: github-pages
@@ -46,6 +53,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy Pages artifact
         id: deployment
         uses: actions/deploy-pages@v5
