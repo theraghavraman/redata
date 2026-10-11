@@ -129,6 +129,29 @@ Environment: Python 3.14.8, DuckDB 1.5.6, ReData engine 1.1.0, Linux x86-64, fou
 
 These timings are specific to this run and measurement boundary. The SQL values include HTTP request/response overhead and are not pure DuckDB execution times. No peak-memory measurement was collected. This single 100,000-row run does not establish a 10-million-row capacity, cannot be directly compared with the historical README figures, and should not be generalized to other machines. The uploaded JSON artifact is the source of the observations; reruns and a controlled larger-dataset matrix are required before stronger conclusions.
 
+The raw observation is preserved in [`benchmarks/results/ci-smoke-100k-8d73fa1.json`](../benchmarks/results/ci-smoke-100k-8d73fa1.json).
+
+### 6.2 One-million-row CI smoke result
+
+A second successful run processed 1,000,000 rows × 10 columns on the same reported GitHub-hosted runner family, using ReData commit `32fe7af4e46109b9ea5395abb0dca7318ca87456`. See [GitHub Actions run 38175438341](https://github.com/theraghavraman/redata/actions/runs/38175438341).
+
+| Measurement | Observed result |
+|---|---:|
+| Dataset | 1,000,000 rows × 10 columns |
+| CSV size | 104,750,872 bytes (about 99.9 MiB) |
+| Dataset SHA-256 | `b228b4a2cc62504eb5a19517ce945e2d22de8d504d6714d64c25568f8009f561` |
+| Stage local-path API | 44.256 ms |
+| Import plus profiling | 1,827.525 ms |
+| SQL aggregate query, 5 observations | 4.688, 3.476, 3.249, 3.053, 3.014 ms |
+| Median SQL aggregate query | 3.249 ms |
+| Five-row page API | 3.743 ms |
+| Correctness | Row count, column count, ID range, first page row, and independent `SUM(value)` check passed |
+| Security smoke check | Missing token rejected with HTTP 403 |
+
+The independent expected sum was `4999995475.08`; DuckDB returned `4999995475.080004`, within the script's floating-point tolerance. The raw observation is preserved in [`benchmarks/results/ci-smoke-1m-32fe7af.json`](../benchmarks/results/ci-smoke-1m-32fe7af.json).
+
+The two runs suggest the current local-engine path can complete this particular synthetic import/profile and query workload at 100,000 and 1,000,000 rows on the recorded runner. They do **not** establish behavior at 10 million rows, other file formats, higher missingness/cardinality, different machines, or all ReData operations. Both are single-run CI baselines; memory was not measured, and query timings include HTTP overhead.
+
 These statuses do not mean a feature fails or succeeds; they mean that this report does not yet contain independently reproducible evidence for the relevant claim.
 
 ## 7. Known limitations and threats to validity
@@ -164,7 +187,7 @@ This draft establishes a testable scope for documenting and evaluating ReData. N
 - Initial draft: defined research questions, scope, evaluation design, evidence requirements, and unverified-result labels.
 - Claims-and-evidence register added to distinguish documentation-level claims from measured and independently reproduced findings.
 - Standard-library regression tests added for the synthetic dataset generator.
-- Added a local-engine HTTP smoke benchmark and CI workflow; first successful 100,000-row hosted-runner result is recorded in Section 6.1. This is a CI baseline, not an independent reproduction of historical README timings.
+- Added a local-engine HTTP smoke benchmark and CI workflow; successful 100,000-row and 1,000,000-row hosted-runner results are recorded in Sections 6.1 and 6.2, with raw JSON committed under `benchmarks/results/`. These are CI baselines, not an independent reproduction of historical README timings.
 
 
 ## Licensing and attribution
