@@ -33,6 +33,8 @@ Options: `--port 9000`, `--memory-limit 6GB`, `--threads 4`, `--workspace D:\red
 
 Measured on a small 2-core cloud machine with a 1 crore row, 10 column CSV (a typical laptop is faster):
 
+> **Evidence note:** These are measurements previously recorded in the project README. The current technical report has not independently reproduced them yet; treat them as project-reported figures until the benchmark protocol is run against a pinned commit and raw logs are published. See [the technical report draft](docs/TECHNICAL_REPORT_DRAFT.md) and [benchmark protocol](docs/BENCHMARK_PROTOCOL.md).
+
 | Step | Time |
 | --- | --- |
 | Import and profile every column | ~40 s |
@@ -127,6 +129,13 @@ These are external providers; ReData is independent and is not affiliated with o
 ## Design direction
 
 ReData uses a warm, light analytics-workbench aesthetic: a persistent sidebar, clear quality signals, readable charts and dense-but-breathable tool panels. The product direction was also laid out in a Higgsfield canvas: [ReData — Product UI direction](https://higgsfield.ai/canvas/a2d72e11-6257-47e5-bcd4-1e3465b4b5c7).
+
+
+## Research and reproducibility
+
+- [Technical report draft](docs/TECHNICAL_REPORT_DRAFT.md) — system scope and planned evaluation; results are pending.
+- [Benchmark protocol](docs/BENCHMARK_PROTOCOL.md) — repeatable test plan and evidence requirements.
+- [Citation metadata](CITATION.cff) — software citation details.
 
 
 ## Licensing and third-party notices
