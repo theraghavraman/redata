@@ -1,0 +1,5 @@
+# ReData local engine: private Python environment and working data
+engine/.venv/
+engine/workspace/
+__pycache__/
+*.pyc
