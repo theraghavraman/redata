@@ -136,3 +136,10 @@ This draft establishes a testable scope for documenting and evaluating ReData. N
 ## Change history
 
 - Initial draft: defined research questions, scope, evaluation design, evidence requirements, and unverified-result labels.
+
+
+## Licensing and attribution
+
+The original ReData software source is licensed under the MIT License in the repository-root `LICENSE`. The original prose and report materials in this directory are licensed under CC BY 4.0 unless a file states otherwise; see [LICENSE](LICENSE). Third-party software and assets retain their own licenses. The repository's [Third-Party Notices and License Inventory](../THIRD_PARTY_NOTICES.md) records the currently identified browser-loaded libraries and direct Python dependencies, including attribution notes for SheetJS Community Edition.
+
+This inventory is not yet a complete version-resolved SBOM: dependency constraints are ranges, transitive packages may vary, and exact bundled font files must be checked for a packaged release. The report makes no claim that all dependency licensing has been legally audited. Before a release is redistributed, generate a version-resolved SBOM, verify upstream license metadata and preserve all applicable notices.
