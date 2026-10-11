@@ -96,7 +96,7 @@ A failed run is a result. Record the input, configuration, observed failure, err
 
 ## 6. Results
 
-**Status: Full evaluation pending.** A CI workflow has been added to run a bounded, 100,000-row local-engine HTTP smoke benchmark and upload its JSON results as a workflow artifact. That test exercises real staging/import, metadata, paginated rows, repeated SQL aggregation, and an unauthenticated-request check. Its result must be cited with the exact workflow run and runner environment; it is not a reproduction of the historical 10-million-row README timings. The broader workload matrix and independent reproduction remain pending.
+**Status: Initial bounded CI smoke run completed; full evaluation pending.** The first successful 100,000-row local-engine HTTP smoke run is recorded below and in [GitHub Actions run 38175393938](https://github.com/theraghavraman/redata/actions/runs/38175393938); its JSON is available in that run's artifact section. This is a single hosted-runner baseline, not an independent reproduction of the historical 10-million-row README timings. The broader workload matrix, repeat runs on controlled hardware, memory measurements, and independent reproduction remain pending.
 
 | Evaluation item | Status | Evidence required |
 |---|---|---|
@@ -107,6 +107,27 @@ A failed run is a result. Record the input, configuration, observed failure, err
 | Browser-only versus local-engine comparison | Not yet verified in this study | Equivalent supported workloads |
 | Failure and timeout boundaries | Not yet verified in this study | Recorded failures and test conditions |
 | Reproducibility by another operator | Not yet verified in this study | Reproduction log or independent review |
+
+### 6.1 Initial CI local-engine smoke result
+
+The first successful bounded smoke run used ReData commit `8d73fa1ac461fe4ac06affc36bfcb26905efb7ee` on a GitHub-hosted Linux runner. The run starts the real local engine, stages a generated CSV through its HTTP API, imports and profiles it, queries DuckDB, checks paginated rows, and confirms an unauthenticated status request receives HTTP 403.
+
+| Measurement | Observed result |
+|---|---:|
+| Dataset | 100,000 rows × 10 columns |
+| CSV size | 10,374,347 bytes (about 9.89 MiB) |
+| Dataset SHA-256 | `9052b08359fe94a309091dbfc76328f6be9775b871507c840e15e66bef3b372a` |
+| Stage local-path API | 30.936 ms |
+| Import plus profiling | 272.050 ms |
+| SQL aggregate query, 5 observations | 1.660, 1.177, 1.066, 1.043, 1.015 ms |
+| Median SQL aggregate query | 1.066 ms |
+| Five-row page API | 2.909 ms |
+| Correctness | Row count, column count, ID range, first page row, and independent `SUM(value)` check passed |
+| Security smoke check | Missing token rejected with HTTP 403 |
+
+Environment: Python 3.14.8, DuckDB 1.5.6, ReData engine 1.1.0, Linux x86-64, four reported CPUs. The independently calculated expected sum was `499954165.3`; DuckDB returned `499954165.29999983`, within the script's declared floating-point tolerance.
+
+These timings are specific to this run and measurement boundary. The SQL values include HTTP request/response overhead and are not pure DuckDB execution times. No peak-memory measurement was collected. This single 100,000-row run does not establish a 10-million-row capacity, cannot be directly compared with the historical README figures, and should not be generalized to other machines. The uploaded JSON artifact is the source of the observations; reruns and a controlled larger-dataset matrix are required before stronger conclusions.
 
 These statuses do not mean a feature fails or succeeds; they mean that this report does not yet contain independently reproducible evidence for the relevant claim.
 
@@ -143,7 +164,7 @@ This draft establishes a testable scope for documenting and evaluating ReData. N
 - Initial draft: defined research questions, scope, evaluation design, evidence requirements, and unverified-result labels.
 - Claims-and-evidence register added to distinguish documentation-level claims from measured and independently reproduced findings.
 - Standard-library regression tests added for the synthetic dataset generator.
-- Added a local-engine HTTP smoke benchmark and CI workflow to record a bounded workload and correctness checks. This is a CI baseline, not an independent reproduction of historical README timings.
+- Added a local-engine HTTP smoke benchmark and CI workflow; first successful 100,000-row hosted-runner result is recorded in Section 6.1. This is a CI baseline, not an independent reproduction of historical README timings.
 
 
 ## Licensing and attribution
