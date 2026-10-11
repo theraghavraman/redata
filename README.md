@@ -11,7 +11,7 @@ The app is a static website. Open `index.html` locally or publish the repository
 | Workspace | What it does |
 | --- | --- |
 | Overview | Live dataset summary, completeness and duplicate counts, quick links to tools |
-| Import data | Local import for CSV, TSV, TXT, JSON / NDJSON and Excel XLSX/XLS |
+| Import data | Local import for CSV, TSV, TXT, JSON / NDJSON and Excel XLSX/XLS; Excel worksheet picker; date-aware Excel parsing; selectable CSV / TSV / TXT encoding |
 | Data explorer | Preview, search, column sorting and CSV export |
 | Profile & quality | Inferred column types, missingness, distinct values, numeric ranges and completeness indicators |
 | Clean & transform | Drop incomplete rows, fill missing values, remove exact duplicate rows, normalize text, remove columns |
@@ -47,7 +47,7 @@ These are external providers; ReData is independent and is not affiliated with o
 - [Google Data Analytics Professional Certificate](https://www.coursera.org/professional-certificates/google-data-analytics)
 - [Google Advanced Data Analytics Professional Certificate](https://www.coursera.org/professional-certificates/google-advanced-data-analytics)
 - [Meta Marketing Analytics Professional Certificate](https://www.coursera.org/professional-certificates/facebook-marketing-analytics)
-- [Microsoft Power BI Data Analyst](https://learn.microsoft.com/en-us/credentials/certifications/power-bi-data-analyst/)
+- [Microsoft Power BI Data Analyst](https://learn.microsoft.com/en-us/credentials/certifications/power-bi-data-analyst-associate/)
 - [Microsoft Learn](https://learn.microsoft.com/en-us/training/)
 
 ## Design direction
