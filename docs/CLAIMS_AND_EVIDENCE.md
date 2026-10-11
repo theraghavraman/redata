@@ -37,7 +37,7 @@ This is a scope statement, not a claim that all listed operations have passed in
 
 A bounded 100,000-row smoke benchmark passed on GitHub Actions at [run 38175393938](https://github.com/theraghavraman/redata/actions/runs/38175393938), source commit `8d73fa1ac461fe4ac06affc36bfcb26905efb7ee`. The generated CSV was 10,374,347 bytes. The run measured 272.050 ms for import plus profiling, 1.066 ms median for five SQL aggregate HTTP requests, and 2.909 ms for a five-row page request. It validated row/column counts, ID range, an independent sum check, and rejection of an unauthenticated status request. Full environment and checksum details are in the technical report's Section 6.1 and the workflow's JSON artifact.
 
-A separate 1,000,000-row CI run is being attempted to extend the baseline. Its result must be added only after the workflow completes successfully and the uploaded JSON has been inspected. Neither smoke run, by itself, independently reproduces the README's historical 10-million-row timings.
+A separate 1,000,000-row CI smoke benchmark also passed at [run 38175438341](https://github.com/theraghavraman/redata/actions/runs/38175438341), with import plus profiling measured at 1,827.525 ms, median SQL aggregate HTTP latency at 3.249 ms across five requests, and the correctness/auth checks passing. Raw observations are preserved in [the 1M JSON result](../benchmarks/results/ci-smoke-1m-32fe7af.json). Both results are environment-specific single-run baselines and do not reproduce the README's historical 10-million-row timings.
 
 ## Minimum evidence package for performance findings
 
