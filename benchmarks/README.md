@@ -49,3 +49,17 @@ python -m unittest discover -s tests -p "test_generate_dataset.py" -v
 ```
 
 The GitHub Actions workflow at `.github/workflows/benchmark-generator-tests.yml` runs these checks on relevant pushes and pull requests. Passing these tests validates the generator artifact only; it is not a ReData application test and provides no performance result.
+
+
+## Local-engine HTTP smoke benchmark
+
+The `run_engine_smoke.py` script starts the actual ReData local engine in an isolated workspace, creates a deterministic CSV, stages and imports it through the HTTP API, checks metadata and paginated rows, runs repeated SQL aggregation queries against an independent expected sum, and verifies that an unauthenticated status request is rejected.
+
+Run locally after installing DuckDB:
+
+```bash
+python -m pip install "duckdb>=1.1.0"
+python benchmarks/run_engine_smoke.py --rows 100000 --columns 10 --repeats 5 --output benchmark-results/engine-smoke.json
+```
+
+The JSON output records the source commit when supplied by CI, Python/platform/DuckDB versions, dataset checksum, stage/import timings, individual SQL query timings, pagination latency, and correctness checks. GitHub Actions runs this smoke benchmark on a hosted runner and uploads the JSON as a workflow artifact. Treat those results as an environment-specific baseline; they do not independently reproduce the historical README timings or establish a universal file-size limit. Larger runs should be performed separately on a documented target machine.
