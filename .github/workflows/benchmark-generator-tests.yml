@@ -44,10 +44,10 @@ jobs:
           python-version: "3.x"
       - name: Install local-engine dependency
         run: python -m pip install --disable-pip-version-check "duckdb>=1.1.0"
-      - name: Run real local-engine smoke benchmark
+      - name: Run real local-engine smoke benchmark (1 million rows)
         env:
           GITHUB_SHA: ${{ github.sha }}
-        run: python benchmarks/run_engine_smoke.py --rows 100000 --columns 10 --repeats 5 --output benchmark-results/engine-smoke.json
+        run: python benchmarks/run_engine_smoke.py --rows 1000000 --columns 10 --repeats 5 --output benchmark-results/engine-smoke.json
       - name: Upload benchmark result
         if: always()
         uses: actions/upload-artifact@v4
