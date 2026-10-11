@@ -1,0 +1,32 @@
+name: Benchmark generator tests
+
+on:
+  push:
+    paths:
+      - "benchmarks/**"
+      - "tests/test_generate_dataset.py"
+      - ".github/workflows/benchmark-generator-tests.yml"
+  pull_request:
+    paths:
+      - "benchmarks/**"
+      - "tests/test_generate_dataset.py"
+      - ".github/workflows/benchmark-generator-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generator-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Compile generator and tests
+        run: python -m py_compile benchmarks/generate_dataset.py tests/test_generate_dataset.py
+      - name: Run generator regression tests
+        run: python -m unittest discover -s tests -p "test_generate_dataset.py" -v
