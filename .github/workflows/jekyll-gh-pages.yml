@@ -35,8 +35,8 @@ jobs:
           html = Path("index.html").read_text(encoding="utf-8")
           assert "<!doctype html>" in html.lower(), "index.html is missing its HTML doctype"
           assert 'id="workspaceContent"' in html, "workspace mount point is missing"
-          assert "function renderSpaceFormats()" in html, "Space Explorer renderer is missing"
-          assert "function inspectSpaceFile(file)" in html, "Space Explorer inspector is missing"
+          assert "function overviewTemplate()" in html, "Overview renderer is missing"
+          assert "function importTemplate()" in html, "Import view renderer is missing"
           assert "function init()" in html, "application initializer is missing"
           assert html.rstrip().lower().endswith("</html>"), "index.html is not closed"
           print("Static app entry-point checks passed.")
