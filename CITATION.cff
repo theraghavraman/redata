@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use or cite ReData, please cite the software repository and the specific release or commit you used."
+title: "ReData — Analytics Workspace"
+authors:
+  - family-names: Raman
+    given-names: Raghav
+    orcid: "https://orcid.org/0009-0006-6026-0674"
+type: software
+abstract: >-
+  ReData is a browser-first data analytics workspace. The repository documents
+  browser-only and optional local-engine execution modes for data exploration,
+  transformation, SQL, visualization, and related analytical workflows.
+repository-code: "https://github.com/theraghavraman/redata"
+url: "https://github.com/theraghavraman/redata"
+license: MIT
