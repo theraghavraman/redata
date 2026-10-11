@@ -150,7 +150,7 @@ A second successful run processed 1,000,000 rows × 10 columns on the same repor
 
 The independent expected sum was `4999995475.08`; DuckDB returned `4999995475.080004`, within the script's floating-point tolerance. The raw observation is preserved in [`benchmarks/results/ci-smoke-1m-32fe7af.json`](../benchmarks/results/ci-smoke-1m-32fe7af.json).
 
-The two runs show the local-engine path completed this particular synthetic import/profile and query workload at both sizes on GitHub-hosted Linux runners. As a descriptive comparison only, row count increased 10×, import-plus-profile time increased about 6.72×, and median SQL request latency increased about 3.05×. This is not a reliable scaling law: these are single runs, exact host allocation may differ, and query timings include HTTP overhead. The results do **not** establish behavior at 10 million rows, other file formats, higher missingness/cardinality, different machines, or all ReData operations. Peak memory was not measured.
+The 100k and 1M runs show the local-engine path completed the tested synthetic import/profile and query workload at both sizes on GitHub-hosted Linux runners. As a descriptive comparison only, row count increased 10×, import-plus-profile time increased about 6.72×, and median SQL request latency increased about 3.05×. This is not a reliable scaling law: these are single runs, exact host allocation may differ, and query timings include HTTP overhead. The results do **not** establish behavior at 10 million rows, other file formats, higher missingness/cardinality, different machines, or all ReData operations. Peak memory was not measured.
 
 These statuses do not mean a feature fails or succeeds; they mean that this report does not yet contain independently reproducible evidence for the relevant claim.
 
@@ -182,12 +182,33 @@ Record all changes to the protocol and explain deviations from the planned metho
 
 This draft establishes a testable scope for documenting and evaluating ReData. No new performance, scalability, correctness, or independent-validation conclusions are made at this stage. Those conclusions remain pending execution of the protocol and review of the resulting evidence.
 
+### 6.3 Ten-million-row, seven-column CI stress result
+
+A larger smoke run passed on GitHub Actions at [run 38175528927](https://github.com/theraghavraman/redata/actions/runs/38175528927), using source commit `27e1126ad12f65ebfdb1122fd66a12f2693fa105`.
+
+| Measurement | Observed result |
+|---|---:|
+| Dataset | 10,000,000 rows × 7 columns |
+| CSV size | 719,145,429 bytes (about 685.7 MiB) |
+| Dataset SHA-256 | `7143ef1af7b8db9877bc66f3695ecc9bbe8abc9209a352a815a993b1c4b27d22` |
+| Stage local-path API | 24.510 ms |
+| Import plus profiling | 8,242.526 ms |
+| SQL aggregate query, 5 observations | 20.224, 14.136, 14.055, 14.608, 14.367 ms |
+| Median SQL aggregate query | 14.367 ms |
+| Five-row page API | 5.529 ms |
+| Correctness | Row/column counts, ID range, first page row, and independent `SUM(value)` check passed |
+| Security smoke check | Missing token rejected with HTTP 403 |
+
+The independent expected sum was `49999986822.75`; DuckDB returned `49999986822.75003`, within the declared floating-point tolerance. The raw JSON is preserved in [`benchmarks/results/ci-smoke-10m-27e1126.json`](../benchmarks/results/ci-smoke-10m-27e1126.json).
+
+This is meaningful evidence that the tested local-engine path completed this particular 10-million-row synthetic workload with seven columns on the recorded GitHub-hosted Linux runner. It does **not** reproduce the README's 10-million-row, 10-column claim: this dataset has seven columns, and its generation pattern differs from the historical input. No peak-memory measurement was collected. A separate 10-million-row, 10-column run has been queued to test the README's stated shape more directly; its result must be recorded separately after completion.
+
 ## Change history
 
 - Initial draft: defined research questions, scope, evaluation design, evidence requirements, and unverified-result labels.
 - Claims-and-evidence register added to distinguish documentation-level claims from measured and independently reproduced findings.
 - Standard-library regression tests added for the synthetic dataset generator.
-- Added a local-engine HTTP smoke benchmark and CI workflow; successful 100,000-row and 1,000,000-row hosted-runner results are recorded in Sections 6.1 and 6.2, with raw JSON committed under `benchmarks/results/`. These are CI baselines, not an independent reproduction of historical README timings.
+- Added a local-engine HTTP smoke benchmark and CI workflow; successful 100,000-row, 1,000,000-row, and 10,000,000-row (7-column) hosted-runner results are recorded in Sections 6.1–6.3, with raw JSON committed under `benchmarks/results/`. The 10M/10-column run is pending. These are CI baselines, not yet a reproduction of the historical 10M/10-column README claim.
 
 
 ## Licensing and attribution
