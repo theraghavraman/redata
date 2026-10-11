@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -56,13 +57,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rows", type=int, default=100_000)
     parser.add_argument("--columns", type=int, default=10)
-    parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--repeats", type=int, default=5, help="Number of repeated SQL requests")
+    parser.add_argument("--import-repeats", type=int, default=3, help="Number of import/profile repetitions against the same file")
     parser.add_argument("--seed", type=int, default=20261012)
     parser.add_argument("--port", type=int, default=18765)
     parser.add_argument("--output", type=Path, default=ROOT / "benchmark-results" / "engine-smoke.json")
     args = parser.parse_args()
-    if args.rows < 1 or args.repeats < 1:
-        parser.error("--rows and --repeats must be positive")
+    if args.rows < 1 or args.repeats < 1 or args.import_repeats < 1:
+        parser.error("--rows, --repeats, and --import-repeats must be positive")
 
     import duckdb
 
@@ -86,6 +88,22 @@ def main() -> int:
         base_url = None
         token = None
         startup_log = ""
+        peak_rss_kib = {"value": 0}
+        monitor_stop = threading.Event()
+
+        def sample_engine_rss() -> None:
+            status_path = Path(f"/proc/{proc.pid}/status")
+            while not monitor_stop.wait(0.05):
+                try:
+                    for line in status_path.read_text(encoding="utf-8").splitlines():
+                        if line.startswith("VmRSS:"):
+                            peak_rss_kib["value"] = max(peak_rss_kib["value"], int(line.split()[1]))
+                            break
+                except (OSError, ValueError):
+                    pass
+
+        monitor_thread = threading.Thread(target=sample_engine_rss, daemon=True)
+        monitor_thread.start()
         try:
             deadline = time.monotonic() + 45
             while time.monotonic() < deadline:
@@ -122,20 +140,28 @@ def main() -> int:
             if "version" not in status:
                 raise AssertionError(f"Unexpected engine status: {status}")
 
-            started = time.perf_counter()
-            staged = request(base_url + "/api/stage_path", token, {"path": str(dataset)})
-            stage_ms = (time.perf_counter() - started) * 1000
-            if "stage" not in staged:
-                raise AssertionError(f"Staging response has no stage id: {staged}")
+            stage_observations = []
+            import_profile_observations = []
+            meta = {}
+            for import_index in range(args.import_repeats):
+                started = time.perf_counter()
+                staged = request(base_url + "/api/stage_path", token, {"path": str(dataset)})
+                stage_observations.append((time.perf_counter() - started) * 1000)
+                if "stage" not in staged:
+                    raise AssertionError(f"Staging response has no stage id: {staged}")
 
-            started = time.perf_counter()
-            loaded = request(base_url + "/api/load", token, {"stage": staged["stage"], "header": True})
-            load_ms = (time.perf_counter() - started) * 1000
-            meta = loaded.get("meta") or {}
-            if meta.get("rows") != args.rows:
-                raise AssertionError(f"Expected {args.rows} rows after import; got {meta.get('rows')}")
-            if len(meta.get("columns", [])) != args.columns:
-                raise AssertionError(f"Expected {args.columns} columns; got {len(meta.get('columns', []))}")
+                started = time.perf_counter()
+                loaded = request(base_url + "/api/load", token, {"stage": staged["stage"], "header": True})
+                import_profile_observations.append((time.perf_counter() - started) * 1000)
+                meta = loaded.get("meta") or {}
+                if meta.get("rows") != args.rows:
+                    raise AssertionError(f"Expected {args.rows} rows after import; got {meta.get('rows')}")
+                if len(meta.get("columns", [])) != args.columns:
+                    raise AssertionError(f"Expected {args.columns} columns; got {len(meta.get('columns', []))}")
+
+            # Capture the approximate sampled engine-process RSS before shutdown.
+            monitor_stop.set()
+            monitor_thread.join(timeout=1)
 
             # Correctness oracle independent of DuckDB: the generator's value
             # column is deterministic and missing-rate is fixed at zero.
@@ -165,7 +191,7 @@ def main() -> int:
                 raise AssertionError(f"Unexpected first paged row: {page['rows'][0]}")
 
             result = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "benchmark_type": "ReData local-engine HTTP smoke benchmark",
                 "status": "passed",
                 "note": "Single-run environment-specific CI baseline; not a universal capacity claim or independent reproduction of prior README timings.",
@@ -181,8 +207,13 @@ def main() -> int:
                 "missing_rate": 0,
                 "dataset_bytes": dataset.stat().st_size,
                 "dataset_sha256": sha256(dataset),
-                "staging_ms": round(stage_ms, 3),
-                "import_and_profile_ms": round(load_ms, 3),
+                "staging_ms_observations": [round(x, 3) for x in stage_observations],
+                "staging_ms_median": round(sorted(stage_observations)[len(stage_observations) // 2], 3),
+                "import_and_profile_ms_observations": [round(x, 3) for x in import_profile_observations],
+                "import_and_profile_ms_median": round(sorted(import_profile_observations)[len(import_profile_observations) // 2], 3),
+                "import_repeats": args.import_repeats,
+                "peak_engine_rss_kib_sampled": peak_rss_kib["value"] or None,
+                "memory_measurement_method": "Linux /proc/<engine-pid>/status VmRSS sampled every 50 ms; approximate process RSS, not DuckDB allocation or system-wide peak",
                 "sql_query_ms": [round(x, 3) for x in query_ms],
                 "sql_query_median_ms": round(sorted(query_ms)[len(query_ms) // 2], 3),
                 "page_5_rows_ms": round(page_ms, 3),
@@ -203,6 +234,8 @@ def main() -> int:
             print(json.dumps(result, indent=2))
             return 0
         finally:
+            monitor_stop.set()
+            monitor_thread.join(timeout=1)
             proc.terminate()
             try:
                 proc.wait(timeout=10)
