@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "benchmark_type": "ReData local-engine HTTP smoke benchmark",
+  "status": "passed",
+  "note": "Single-run environment-specific CI baseline; not a universal capacity claim or independent reproduction of prior README timings.",
+  "source_commit": "27e1126ad12f65ebfdb1122fd66a12f2693fa105",
+  "engine_version": "1.1.0",
+  "duckdb_version": "1.5.6",
+  "python_version": "3.14.8 (main, Oct 1 2026, 02:38:33) [GCC 13.3.0]",
+  "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "cpu_count": 4,
+  "rows": 10000000,
+  "columns": 7,
+  "seed": 20261012,
+  "missing_rate": 0,
+  "dataset_bytes": 719145429,
+  "dataset_sha256": "7143ef1af7b8db9877bc66f3695ecc9bbe8abc9209a352a815a993b1c4b27d22",
+  "staging_ms": 24.51,
+  "import_and_profile_ms": 8242.526,
+  "sql_query_ms": [
+    20.224,
+    14.136,
+    14.055,
+    14.608,
+    14.367
+  ],
+  "sql_query_median_ms": 14.367,
+  "page_5_rows_ms": 5.529,
+  "correctness": {
+    "row_count": true,
+    "column_count": true,
+    "id_min_max": [
+      0,
+      9999999
+    ],
+    "sum_value_expected": 49999986822.75,
+    "sum_value_observed": 49999986822.75003,
+    "sum_value_matches": true,
+    "page_first_id": 0
+  },
+  "auth_check": "unauthenticated /api/status correctly returned HTTP 403",
+  "repeats": 5
+}
