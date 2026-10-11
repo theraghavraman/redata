@@ -20,10 +20,17 @@ if not exist "engine\.venv\Scripts\python.exe" (
   echo Creating a private Python environment in engine\.venv ...
   %PY% -m venv "engine\.venv" || goto :fail
 )
-if not exist "engine\.venv\.installed" (
-  echo Installing DuckDB and Excel readers (first run only^) ...
+rem Install on first run, and again whenever engine\requirements.txt changes.
+set "NEEDINSTALL="
+if not exist "engine\.venv\.installed" set "NEEDINSTALL=1"
+if not defined NEEDINSTALL (
+  fc /b "engine\requirements.txt" "engine\.venv\.installed" >nul 2>nul || set "NEEDINSTALL=1"
+)
+if defined NEEDINSTALL (
+  echo Installing DuckDB and the database drivers (first run or after an update^) ...
+  "engine\.venv\Scripts\python.exe" -m pip install --disable-pip-version-check -q --upgrade pip
   "engine\.venv\Scripts\python.exe" -m pip install --disable-pip-version-check -q -r "engine\requirements.txt" || goto :fail
-  echo ok> "engine\.venv\.installed"
+  copy /y "engine\requirements.txt" "engine\.venv\.installed" >nul
 )
 
 "engine\.venv\Scripts\python.exe" "engine\redata_engine.py" %*

@@ -1,3 +1,11 @@
+# core engine
 duckdb>=1.1.0
 openpyxl>=3.1.0
 xlrd>=2.0.1
+pyarrow>=14.0
+# source connectors (Connections page)
+psycopg[binary]>=3.1
+PyMySQL>=1.1
+pymssql>=2.3
+snowflake-connector-python>=3.12
+boto3>=1.34

@@ -38,7 +38,7 @@ except ImportError:  # pragma: no cover - friendly message for first run
         "start-engine.sh) or: python -m pip install -r engine/requirements.txt"
     )
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_ROOT = os.path.dirname(ENGINE_DIR)
 TABLE = "data"
@@ -263,7 +263,9 @@ class Engine:
         self.stages = {}
         self.exports = {}
         self.meta_cache = None
-        self.state = {"name": None}
+        self.data_version = 0
+        self.pipeline = None
+        self.state = {"name": None, "linked_stream": None, "updated_at": None}
         try:
             with open(self.state_path, "r", encoding="utf-8") as fh:
                 self.state.update(json.load(fh))
@@ -271,6 +273,10 @@ class Engine:
             pass
         if not self.has_data():
             self.state["name"] = None
+
+    def start_pipeline(self):
+        from pipeline import Pipeline
+        self.pipeline = Pipeline(self)
 
     # ---- basics ----------------------------------------------------------
     def q(self, sql, params=None):
@@ -313,6 +319,9 @@ class Engine:
 
     def changed(self):
         self.meta_cache = None
+        self.data_version += 1
+        self.state["updated_at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+        self.save_state()
 
     def rebuild(self, select_list, where="", extra_from=""):
         """Rewrite the table, keeping original row order and contiguous rowids."""
@@ -324,7 +333,44 @@ class Engine:
 
     # ---- status / meta -----------------------------------------------------
     def status(self):
-        return {"version": VERSION, "dataset": self.state.get("name") if self.has_data() else None}
+        running = 0
+        if self.pipeline:
+            running = sum(1 for v in self.pipeline.status.values() if v == "running")
+        return {"version": VERSION, "dataset": self.state.get("name") if self.has_data() else None,
+                "dataVersion": self.data_version, "updatedAt": self.state.get("updated_at"),
+                "linkedStream": self.state.get("linked_stream"), "syncsRunning": running}
+
+    # ---- staging tables as the active dataset ---------------------------
+    def open_staged(self, table, link=False):
+        from pipeline import SCHEMA
+        exists = self.q("SELECT 1 FROM duckdb_tables() WHERE schema_name = ? AND table_name = ?", [SCHEMA, table])
+        if not exists:
+            raise UserError("No staging table called %s." % table)
+        self.q("CREATE OR REPLACE TABLE %s AS SELECT * FROM %s.%s" % (qi(TABLE), SCHEMA, qi(table)))
+        stream = None
+        if link and self.pipeline:
+            stream = next((x["id"] for x in self.pipeline.cfg["streams"] if x["target"] == table), None)
+        self.state["name"] = "staging.%s" % table
+        self.state["linked_stream"] = stream
+        self.changed()
+        return self.meta()
+
+    def refresh_linked(self):
+        from pipeline import SCHEMA
+        sid = self.state.get("linked_stream")
+        if not sid or not self.pipeline:
+            return
+        target = next((x["target"] for x in self.pipeline.cfg["streams"] if x["id"] == sid), None)
+        if not target:
+            return
+        with self.lock:
+            self.q("CREATE OR REPLACE TABLE %s AS SELECT * FROM %s.%s" % (qi(TABLE), SCHEMA, qi(target)))
+            self.changed()
+            self.meta()
+
+    def excel_file_to_csv(self, path):
+        st = {"path": path, "ext": file_ext(path)}
+        return self._excel_to_csv(st, 0)
 
     def meta(self):
         if self.meta_cache is not None:
@@ -410,6 +456,9 @@ class Engine:
             dups = n - distinct_rows
         self.meta_cache = {
             "name": self.state.get("name") or "dataset",
+            "version": self.data_version,
+            "updatedAt": self.state.get("updated_at"),
+            "linkedStream": self.state.get("linked_stream"),
             "rows": n,
             "columns": out,
             "missingTotal": sum(i["missing"] for i in out),
@@ -596,6 +645,7 @@ class Engine:
                     pass
         self.drop_stage(sid)
         self.state["name"] = display
+        self.state["linked_stream"] = None
         self.save_state()
         self.changed()
         return self.meta()
@@ -895,7 +945,6 @@ class Engine:
         return stmts[-1]
 
     def sql(self, query):
-        self.require_data()
         stmt = self._read_only_statement(query)
         res = self.con.execute(stmt.query)
         if not res.description:
@@ -909,7 +958,8 @@ class Engine:
 
     # ---- export -------------------------------------------------------------------------
     def export(self, kind, fmt="csv", query=None, g=None, y=None, agg="sum"):
-        self.require_data()
+        if kind != "sql":
+            self.require_data()
         fmt = "json" if fmt == "json" else "csv"
         base = re.sub(r"\.[^.]+$", "", (self.state.get("name") or "redata").split(" · ")[0]) or "redata"
         if kind == "data":
@@ -1058,8 +1108,11 @@ def make_handler(engine, token, port):
                     result = engine.stage_upload(name, self.rfile, length)
                     return self._send(200, result)
                 body = self._json_body()
-                with engine.lock:
+                if route.startswith("/api/pipeline/"):
                     result = self._route(route, body)
+                else:
+                    with engine.lock:
+                        result = self._route(route, body)
                 if isinstance(result, dict):
                     result.setdefault("ms", int((time.time() - started) * 1000))
                 return self._send(200, result)
@@ -1116,10 +1169,50 @@ def make_handler(engine, token, port):
                 return r
             if route == "/api/sql":
                 return e.sql(b.get("query"))
+            if route.startswith("/api/pipeline/"):
+                return self._pipeline_route(route[len("/api/pipeline/"):], b)
+            if route == "/api/open_staged":
+                return {"meta": e.open_staged(b.get("table"), bool(b.get("link")))}
             if route == "/api/export":
                 return e.export(b.get("kind"), b.get("format", "csv"), b.get("query"), b.get("g"), b.get("y"),
                                 b.get("agg", "sum"))
             raise UserError("Unknown engine endpoint.")
+
+        def _pipeline_route(self, name, b):
+            from pipeline import PipelineError
+            p = engine.pipeline
+            if p is None:
+                raise UserError("The pipeline is not running.")
+            try:
+                if name == "catalog":
+                    return {"catalog": p.catalog()}
+                if name == "overview":
+                    return p.overview()
+                if name == "save_connection":
+                    return p.save_connection(b)
+                if name == "delete_connection":
+                    return p.delete_connection(b.get("id"))
+                if name == "test_connection":
+                    return p.test_connection(b.get("id"))
+                if name == "snowflake_key":
+                    return p.snowflake_key(b.get("id"))
+                if name == "source_tables":
+                    return p.source_tables(b.get("id"))
+                if name == "source_columns":
+                    return p.source_columns(b.get("id"), b.get("source"))
+                if name == "save_stream":
+                    return p.save_stream(b)
+                if name == "delete_stream":
+                    return p.delete_stream(b.get("id"), bool(b.get("drop")))
+                if name == "reset_stream":
+                    return p.reset_stream(b.get("id"))
+                if name == "sync_now":
+                    return p.enqueue(b.get("id"))
+                if name == "runs":
+                    return {"runs": p.runs(int(b.get("limit") or 50), b.get("stream"))}
+            except PipelineError as err:
+                raise UserError(str(err))
+            raise UserError("Unknown pipeline action.")
 
     return Handler
 
@@ -1137,6 +1230,7 @@ def main():
     if not os.path.isfile(os.path.join(APP_ROOT, "index.html")):
         sys.exit("index.html was not found next to the engine folder (%s)." % APP_ROOT)
     engine = Engine(os.path.abspath(args.workspace), args.memory_limit, args.threads)
+    engine.start_pipeline()
     token = secrets.token_urlsafe(24)
 
     server, port = None, args.port
@@ -1157,6 +1251,9 @@ def main():
     print("  Workspace:  %s" % engine.workspace)
     if engine.state.get("name"):
         print("  Dataset:    %s (restored from last session)" % engine.state["name"])
+    if engine.pipeline and engine.pipeline.cfg["streams"]:
+        n = len(engine.pipeline.cfg["streams"])
+        print("  Syncs:      %d configured; scheduled ones run while this window is open" % n)
     print("  Stop:       press Ctrl+C in this window")
     print("")
     if not args.no_browser:

@@ -1123,6 +1123,54 @@
           transform: rotate(360deg);
         }
       }
+      .chip {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #efeae0;
+        color: #6d665a;
+        font: 700 10px Manrope, system-ui, sans-serif;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+      .chip.ok {
+        background: #dff1e4;
+        color: #2f6b45;
+      }
+      .chip.bad {
+        background: #fbe1d6;
+        color: #a2441f;
+      }
+      .chip.run {
+        background: #e0eafa;
+        color: #2c5596;
+      }
+      .sync-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 0;
+        border-bottom: 1px solid #eee8dc;
+        flex-wrap: wrap;
+      }
+      .sync-row:last-child {
+        border-bottom: 0;
+      }
+      .sync-main {
+        min-width: 0;
+        flex: 1 1 380px;
+      }
+      .sync-main .hint {
+        margin-top: 4px;
+        overflow-wrap: anywhere;
+      }
+      .sync-title {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
       .btn:disabled {
         opacity: 0.45;
         cursor: not-allowed;
@@ -1168,6 +1216,8 @@
           <span class="nav-icon">◈</span>Overview</button
         ><button class="nav-btn" data-view="import">
           <span class="nav-icon">↥</span>Import data</button
+        ><button class="nav-btn" data-view="connections">
+          <span class="nav-icon">⇄</span>Connections</button
         ><button class="nav-btn" data-view="dataset">
           <span class="nav-icon">▦</span>Data explorer
           <span class="nav-count" id="navRows">20</span></button
@@ -1531,8 +1581,11 @@
           formulas: "Formula builder",
           report: "Insights & reports",
           learning: "Learning roadmap",
+          connections: "Connections",
         };
         const desc = {
+          connections:
+            "Bring data in from databases, warehouses, files, data lakes and APIs. Syncs land in staging tables you can analyse, join in SQL, or keep refreshed on a schedule.",
           import:
             "Bring a file into your workspace. CSV, TSV, JSON and Excel files are read locally in your browser.",
           dataset:
@@ -1575,6 +1628,7 @@
           formulas: ["ƒ", "#dff1e4"],
           report: ["▧", "#ffe6d2"],
           learning: ["✧", "#e3ebfa"],
+          connections: ["⇄", "#e0eafa"],
         };
         let sqlDb = null;
         // ------------------------------------------------------------------
@@ -2137,6 +2191,13 @@
             '</div></div><span class="tag">LIVE SUMMARY</span></div><div class="panel-body"><div class="chart-wrap"><div class="bar-chart">' +
             bars +
             '</div><div class="chart-legend"><span><i class="legend-dot" style="background:#e5793e"></i>Aggregate value</span><span class="muted">Sample view · illustrative data</span></div></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:13px"><button class="btn small" data-view="visualize">Open chart builder ↗</button><button class="btn small" data-view="statistics">Explore statistics</button></div></div></section><section class="panel"><div class="panel-head"><div><h2 class="panel-title">A reliable analysis flow</h2><div class="panel-sub">From raw file to defensible decisions</div></div><span class="tag">FIELD GUIDE</span></div><div class="panel-body"><div class="flow-list"><div class="flow-item"><div class="flow-icon" style="background:#ffe7d3">↥</div><div class="flow-copy"><strong>1. Bring the data in</strong><p>Check source, grain, date range and definitions.</p></div><span class="flow-state">START</span></div><div class="flow-item"><div class="flow-icon" style="background:#e0eafa">⌕</div><div class="flow-copy"><strong>2. Validate and clean</strong><p>Profile missingness, duplicates, types and outliers.</p></div></div><div class="flow-item"><div class="flow-icon" style="background:#dff1e4">∑</div><div class="flow-copy"><strong>3. Analyse with intent</strong><p>Explore, segment, test and quantify uncertainty.</p></div></div><div class="flow-item"><div class="flow-icon" style="background:#f8edb8">▧</div><div class="flow-copy"><strong>4. Communicate the result</strong><p>Explain impact, caveats and next actions.</p></div></div></div></div></section></div><div class="section-head"><div><h2>Pick up a tool</h2><p>Purpose-built studios for common analytics tasks.</p></div><button class="btn small" data-view="learning">View learning roadmap ↗</button></div><div class="grid quick-grid">' +
+            (ENGINE
+              ? toolCard(
+                  "connections",
+                  "Connections",
+                  "Sync databases, warehouses, files and APIs.",
+                )
+              : "") +
             toolCard(
               "profile",
               "Profile & quality",
@@ -4166,6 +4227,588 @@
             '</ul><p class="hint">These are computational summaries, not an automatically validated business recommendation.</p></div><div class="panel workspace-panel"><div class="eyebrow">YOUR ANALYST NOTES</div><h2 class="panel-title">Add context before sharing</h2><div class="field" style="margin-top:14px"><label for="reportQuestion">Business question</label><textarea id="reportQuestion" placeholder="What decision should this analysis inform?"></textarea></div><div class="field" style="margin-top:12px"><label for="reportFinding">Key finding and evidence</label><textarea id="reportFinding" placeholder="State the finding, the supporting metric, and an appropriate comparison."></textarea></div><div class="field" style="margin-top:12px"><label for="reportCaveat">Caveats / next step</label><textarea id="reportCaveat" placeholder="Mention data limits, uncertainty and the next validation step."></textarea></div><button class="btn orange" style="margin-top:12px" data-action="export-report">Download analysis brief</button></div></div>'
           );
         }
+        // ------------------------------------------------------------------
+        // Connections: sources -> syncs -> staging tables (engine only)
+        // ------------------------------------------------------------------
+        const PIPE = { catalog: null, ov: null, editing: null, draft: null, tables: [], columns: [] };
+        let pipeTimer = null;
+        const MODE_HELP = {
+          full: "Replace the staging table with a fresh copy on every run.",
+          append: "Add only rows whose cursor column is newer than the last run (for files: only new or changed files).",
+          upsert: "Like append, but a row whose key already exists is replaced, so updates at the source arrive too.",
+        };
+        const INTERVAL_LABELS = { 0: "Manual only", 5: "Every 5 min", 15: "Every 15 min", 30: "Every 30 min", 60: "Hourly", 180: "Every 3 hours", 360: "Every 6 hours", 720: "Every 12 hours", 1440: "Daily" };
+        function ago(iso) {
+          if (!iso) return "never";
+          const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+          if (s < 60) return s + " s ago";
+          if (s < 3600) return Math.round(s / 60) + " min ago";
+          if (s < 86400) return Math.round(s / 3600) + " h ago";
+          return Math.round(s / 86400) + " d ago";
+        }
+        function chip(status) {
+          const map = { success: ["ok", "Success"], failed: ["bad", "Failed"], running: ["run", "Running"], queued: ["run", "Queued"], idle: ["", "Idle"] };
+          const m = map[status] || ["", status || "—"];
+          return '<span class="chip ' + m[0] + '">' + esc(m[1]) + "</span>";
+        }
+        async function loadPipeline() {
+          if (!PIPE.catalog) PIPE.catalog = (await api("/api/pipeline/catalog")).catalog;
+          PIPE.ov = await api("/api/pipeline/overview");
+        }
+        function pipelineKpis() {
+          const ov = PIPE.ov;
+          if (!ov) return "";
+          const staged = ov.staged.reduce((n, t) => n + (t.rows || 0), 0),
+            last = ov.runs[0],
+            failing = ov.streams.filter((s) => s.state && s.state.last_status === "failed").length;
+          return (
+            kpi("CONNECTIONS", fmt(ov.connections.length), "databases, files, lakes and APIs", "⇄", "#e0eafa") +
+            kpi("SYNCS", fmt(ov.streams.length), ov.streams.filter((s) => s.interval > 0).length + " on a schedule", "↻", "#ffe7d3") +
+            kpi("ROWS IN STAGING", fmt(staged), ov.staged.length + " staging tables", "▤", "#dff1e4") +
+            kpi(
+              "LAST SYNC",
+              last ? ago(last.finished_at) : "—",
+              failing ? failing + " sync" + (failing > 1 ? "s" : "") + " failing" : last ? "all syncs healthy" : "nothing synced yet",
+              failing ? "!" : "✓",
+              failing ? "#ffe0d6" : "#f8edb8",
+            )
+          );
+        }
+        function connListHTML() {
+          const ov = PIPE.ov;
+          if (!ov || !ov.connections.length)
+            return '<div class="empty"><strong>No connections yet</strong>Add a database, warehouse, folder, bucket or API to start syncing data.</div>';
+          return (
+            '<div class="grid two-col">' +
+            ov.connections
+              .map((c) => {
+                const t = c.lastTest,
+                  where = c.params.host || c.params.account || c.params.folder || c.params.bucket || c.params.base_url || c.params.path || "",
+                  syncs = ov.streams.filter((s) => s.connection_id === c.id).length;
+                return (
+                  '<div class="result-box"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><strong>' +
+                  esc(c.name) +
+                  '</strong><div class="hint" style="margin-top:3px">' +
+                  esc(c.typeLabel) +
+                  (where ? " · " + esc(String(where).slice(0, 60)) : "") +
+                  "</div></div>" +
+                  (t ? chip(t.ok ? "success" : "failed") : '<span class="chip">Not tested</span>') +
+                  "</div>" +
+                  (t && !t.ok ? '<div class="hint" style="color:#b4532a;margin-top:8px;overflow-wrap:anywhere">' + esc(t.message) + "</div>" : "") +
+                  '<div class="hint" style="margin-top:8px">' +
+                  syncs +
+                  " sync" +
+                  (syncs === 1 ? "" : "s") +
+                  (t ? " · tested " + ago(t.at) : "") +
+                  '</div><div class="head-buttons" style="margin-top:12px"><button class="btn small" data-action="conn-test" data-id="' +
+                  c.id +
+                  '">Test</button><button class="btn small orange" data-action="stream-new" data-id="' +
+                  c.id +
+                  '">＋ Add sync</button><button class="btn small" data-action="conn-edit" data-id="' +
+                  c.id +
+                  '">Edit</button><button class="btn small" data-action="conn-delete" data-id="' +
+                  c.id +
+                  '">Delete</button></div></div>'
+                );
+              })
+              .join("") +
+            "</div>"
+          );
+        }
+        function streamTableHTML() {
+          const ov = PIPE.ov;
+          if (!ov || !ov.streams.length)
+            return '<div class="empty"><strong>No syncs yet</strong>Choose “Add sync” on a connection to copy a table, query, file pattern or API endpoint into staging.</div>';
+          return ov.streams
+            .map((s) => {
+              const st = s.state || {},
+                live = ov.linked === s.id,
+                status = s.status !== "idle" ? s.status : st.last_status || "idle",
+                src = s.source.length > 90 ? s.source.slice(0, 89) + "…" : s.source,
+                bits = [
+                  esc(s.connectionName) + ": <code>" + esc(src) + "</code>",
+                  "<b>" + esc(s.mode) + "</b>" + (s.cursor ? " on " + esc(s.cursor) : "") + (s.keys && s.keys.length ? " · key " + esc(s.keys.join(", ")) : ""),
+                  esc(INTERVAL_LABELS[s.interval] || "Every " + s.interval + " min"),
+                ];
+              if (s.cursorDisplay) bits.push("loaded up to " + esc(String(s.cursorDisplay).slice(0, 19)));
+              const last = st.last_run
+                ? "Last run " + ago(st.last_run) + (st.last_seconds !== undefined ? " in " + st.last_seconds + " s" : "") + (st.last_rows !== undefined ? " · " + fmt(st.last_rows) + " rows" : "")
+                : "Not run yet";
+              return (
+                '<div class="sync-row"><div class="sync-main"><div class="sync-title"><b>staging.' +
+                esc(s.target) +
+                "</b> " +
+                chip(status) +
+                (live ? ' <span class="chip ok">Live in workspace</span>' : "") +
+                '</div><div class="hint">' +
+                bits.join(" · ") +
+                '</div><div class="hint">' +
+                last +
+                (st.last_message
+                  ? ' · <span style="' + (st.last_status === "failed" ? "color:#b4532a" : "") + '">' + esc(st.last_message.slice(0, 160)) + "</span>"
+                  : "") +
+                '</div></div><div class="pager sync-actions"><button class="btn small orange" data-action="stream-sync" data-id="' +
+                s.id +
+                '"' +
+                (s.status !== "idle" ? " disabled" : "") +
+                '>Sync now</button><button class="btn small" data-action="stream-analyse" data-table="' +
+                esc(s.target) +
+                '">Analyse</button><button class="btn small" data-action="stream-edit" data-id="' +
+                s.id +
+                '">Edit</button><button class="btn small" data-action="stream-reset" data-id="' +
+                s.id +
+                '" title="Forget the cursor and loaded files so the next run starts from scratch">Reset</button><button class="btn small" data-action="stream-delete" data-id="' +
+                s.id +
+                '">Delete</button></div></div>'
+              );
+            })
+            .join("");
+        }
+        function stagedHTML() {
+          const ov = PIPE.ov;
+          if (!ov || !ov.staged.length)
+            return '<div class="hint">Staging tables appear here after the first sync.</div>';
+          return (
+            '<div class="table-shell"><table class="data-table"><thead><tr><th>Table</th><th>Rows</th><th>Columns</th><th></th></tr></thead><tbody>' +
+            ov.staged
+              .map(
+                (t) =>
+                  "<tr><td><b>staging." +
+                  esc(t.table) +
+                  "</b></td><td>" +
+                  fmt(t.rows) +
+                  "</td><td>" +
+                  fmt(t.columns) +
+                  '</td><td><div class="pager" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn small orange" data-action="stream-analyse" data-table="' +
+                  esc(t.table) +
+                  '">Analyse</button><button class="btn small" data-action="staged-sql" data-table="' +
+                  esc(t.table) +
+                  '">Query in SQL lab</button></div></td></tr>',
+              )
+              .join("") +
+            "</tbody></table></div>"
+          );
+        }
+        function runLogHTML() {
+          const ov = PIPE.ov;
+          if (!ov || !ov.runs.length) return '<div class="hint">No sync has run yet.</div>';
+          return genericTable(
+            ov.runs.map((r) => ({
+              Finished: r.finished_at ? new Date(r.finished_at).toLocaleString() : "",
+              Sync: "staging." + r.stream,
+              Trigger: r.trigger,
+              Status: r.status,
+              Read: r.rows_read,
+              "Rows in table": r.table_rows,
+              Seconds: r.finished_at && r.started_at ? (new Date(r.finished_at) - new Date(r.started_at)) / 1000 : null,
+              Message: r.message || "",
+            })),
+          );
+        }
+        function refreshPipelineDom() {
+          const set = (id, html) => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = html;
+          };
+          set("pipeKpis", pipelineKpis());
+          set("connList", connListHTML());
+          set("streamTable", streamTableHTML());
+          set("stagedList", stagedHTML());
+          set("runLog", runLogHTML());
+        }
+        function startPipelinePolling() {
+          clearInterval(pipeTimer);
+          pipeTimer = setInterval(async () => {
+            if (activeView !== "connections") {
+              clearInterval(pipeTimer);
+              return;
+            }
+            try {
+              await loadPipeline();
+              refreshPipelineDom();
+            } catch (_) {}
+          }, 3000);
+        }
+        function connectionsTemplate() {
+          const head =
+            '<div class="page-head"><div><div class="eyebrow">PIPELINE</div><h1 class="page-title">Connections<span style="color:var(--orange)">.</span></h1><p class="page-subtitle">' +
+            esc(desc.connections) +
+            "</p></div>";
+          if (!ENGINE)
+            return (
+              head +
+              '</div><div class="notice"><b>Connections need the ReData local engine.</b> A browser tab cannot reach databases, warehouses or buckets by itself. Run <code>start-engine.bat</code> (Windows) or <code>./start-engine.sh</code> (macOS / Linux) and open ReData from the address it prints.</div>'
+            );
+          return (
+            head +
+            '<div class="head-buttons"><button class="btn" data-action="pipe-refresh">↻ Refresh</button><button class="btn primary" data-action="conn-new">＋ New connection</button></div></div><div class="grid kpi-grid" id="pipeKpis">' +
+            pipelineKpis() +
+            '</div><div id="connEditor"></div><div class="section-head"><div><h2>Connections</h2><p>Sources ReData can read from. Passwords and tokens stay in this computer\'s engine folder and are never sent back to the page.</p></div></div><div id="connList">' +
+            connListHTML() +
+            '</div><div id="streamEditor"></div><div class="section-head"><div><h2>Syncs</h2><p>Each sync copies one table, query, file pattern or endpoint into a staging table, by hand or on a schedule. Scheduled syncs run while the engine window is open.</p></div></div><div class="panel workspace-panel" id="streamTable">' +
+            streamTableHTML() +
+            '</div><div class="grid two-col" style="margin-top:16px"><div class="panel workspace-panel"><strong>Staging tables</strong><p class="hint" style="margin:6px 0 12px">Analyse one directly, or join them in the SQL lab as <code>staging.table_name</code>.</p><div id="stagedList">' +
+            stagedHTML() +
+            '</div></div><div class="panel workspace-panel"><strong>How syncs keep data fresh</strong><ul class="insight-list"><li><b>Full</b> replaces the table each run: best for small lookup tables.</li><li><b>Append</b> adds rows newer than the last cursor value (an increasing id or timestamp), or only new files.</li><li><b>Upsert</b> also replaces changed rows by key, so edits at the source arrive.</li><li>Choose <b>Analyse</b> to make a staging table the active dataset; it then refreshes after every successful sync of that table.</li><li>Deletes at the source are not detected by incremental syncs; run a full sync, or use change data capture later.</li></ul></div></div><div class="section-head"><div><h2>Sync history</h2><p>The last 30 runs, newest first.</p></div></div><div class="panel workspace-panel" id="runLog">' +
+            runLogHTML() +
+            "</div>"
+          );
+        }
+        // ---- connection editor ----
+        function connEditorHTML() {
+          const ed = PIPE.editing;
+          if (!ed) return "";
+          const cat = PIPE.catalog || {},
+            spec = cat[ed.type],
+            groups = {};
+          Object.entries(cat).forEach(([k, v]) => (groups[v.group] = groups[v.group] || []).push([k, v]));
+          const typeSelect =
+            '<div class="field"><label for="connType">Type</label><select id="connType"' +
+            (ed.id ? " disabled" : "") +
+            ">" +
+            Object.entries(groups)
+              .map(
+                ([g, items]) =>
+                  '<optgroup label="' +
+                  esc(g) +
+                  '">' +
+                  items.map(([k, v]) => '<option value="' + k + '"' + (k === ed.type ? " selected" : "") + ">" + esc(v.label) + "</option>").join("") +
+                  "</optgroup>",
+              )
+              .join("") +
+            "</select></div>";
+          const fields = spec
+            ? spec.fields
+                .map((f) => {
+                  const val = f.secret ? "" : ed.params[f.key] !== undefined ? ed.params[f.key] : f.default || "";
+                  const saved = f.secret && ed.secretsSet.includes(f.key);
+                  const ph = saved ? "•••••• saved (leave blank to keep)" : f.placeholder || "";
+                  const label = esc(f.label) + (f.required && !f.secret ? "" : ' <span class="hint">(optional)</span>');
+                  let control;
+                  if (f.kind === "select")
+                    control =
+                      '<select data-conn-field="' +
+                      f.key +
+                      '">' +
+                      f.options.map((o) => '<option value="' + esc(o) + '"' + (o === val ? " selected" : "") + ">" + esc(o) + "</option>").join("") +
+                      "</select>";
+                  else if (f.kind === "textarea")
+                    control = '<textarea rows="2" data-conn-field="' + f.key + '" placeholder="' + esc(ph) + '">' + (f.secret ? "" : esc(val)) + "</textarea>";
+                  else
+                    control =
+                      '<input data-conn-field="' +
+                      f.key +
+                      '" type="' +
+                      (f.kind === "password" ? "password" : f.kind === "number" ? "number" : "text") +
+                      '" value="' +
+                      esc(val) +
+                      '" placeholder="' +
+                      esc(ph) +
+                      '" autocomplete="off">';
+                  return '<div class="field"><label>' + label + "</label>" + control + (f.help ? '<div class="hint">' + esc(f.help) + "</div>" : "") + "</div>";
+                })
+                .join("")
+            : "";
+          return (
+            '<div class="panel workspace-panel" style="margin-top:16px"><div class="section-head" style="margin-top:0"><div><h2>' +
+            (ed.id ? "Edit connection" : "New connection") +
+            "</h2><p>" +
+            esc(spec ? spec.note : "") +
+            '</p></div></div><div class="grid two-col">' +
+            inputField("Name", "connName", "e.g. Sales Postgres", ed.name || "") +
+            typeSelect +
+            fields +
+            '</div><div class="head-buttons" style="margin-top:14px"><button class="btn orange" data-action="conn-save" data-test="1">Save and test</button><button class="btn" data-action="conn-save">Save</button>' +
+            (ed.type === "snowflake" ? '<button class="btn" data-action="conn-sfkey">Generate key</button>' : "") +
+            '<button class="btn" data-action="conn-cancel">Cancel</button></div><div id="connEditorMsg"></div></div>'
+          );
+        }
+        function openConnEditor(c) {
+          const cat = PIPE.catalog || {};
+          PIPE.editing = c
+            ? { id: c.id, name: c.name, type: c.type, params: c.params || {}, secretsSet: c.secretsSet || [] }
+            : { id: null, name: "", type: Object.keys(cat)[0] || "postgres", params: {}, secretsSet: [] };
+          $("#connEditor").innerHTML = connEditorHTML();
+          $("#connEditor").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        function readConnEditor() {
+          const ed = PIPE.editing,
+            values = {};
+          $$("[data-conn-field]").forEach((el) => (values[el.dataset.connField] = el.value));
+          return { id: ed.id, type: ed.id ? ed.type : $("#connType").value, name: $("#connName").value.trim(), values };
+        }
+        async function saveConn(test) {
+          const body = readConnEditor();
+          const r = await withBusy("Saving connection…", () => api("/api/pipeline/save_connection", body));
+          PIPE.editing.id = r.id;
+          let msg = '<div class="result-message ok">Saved.</div>';
+          if (test) {
+            const t = await withBusy("Testing " + (body.name || "connection") + "…", () => api("/api/pipeline/test_connection", { id: r.id }));
+            msg = '<div class="result-message ' + (t.ok ? "ok" : "error") + '">' + (t.ok ? "" : "Test failed: ") + esc(t.message) + "</div>";
+          }
+          await loadPipeline();
+          refreshPipelineDom();
+          const c = PIPE.ov.connections.find((x) => x.id === r.id);
+          if (c) {
+            PIPE.editing.secretsSet = c.secretsSet;
+            PIPE.editing.params = c.params;
+          }
+          $("#connEditorMsg").innerHTML = msg;
+          return r.id;
+        }
+        // ---- sync (stream) editor ----
+        function streamEditorHTML() {
+          const d = PIPE.draft;
+          if (!d) return "";
+          const conn = PIPE.ov.connections.find((c) => c.id === d.connection_id) || {},
+            isFile = ["files", "s3", "http"].includes(conn.type),
+            isApi = conn.type === "rest",
+            modes = conn.type === "http" ? ["full"] : ["full", "append", "upsert"],
+            srcLabel = isFile ? "File or pattern" : isApi ? "Endpoint path" : "Table or view",
+            srcPh = isFile ? "invoices_*.csv" : isApi ? "orders?status=all" : "public.orders";
+          return (
+            '<div class="panel workspace-panel" style="margin-top:16px"><div class="section-head" style="margin-top:0"><div><h2>' +
+            (d.id ? "Edit sync" : "New sync") +
+            " · " +
+            esc(conn.name || "") +
+            '</h2><p>Copies data from this connection into a staging table.</p></div></div><div class="grid two-col"><div class="field"><label for="streamSource">' +
+            srcLabel +
+            '</label><input id="streamSource" list="streamSourceList" value="' +
+            esc(d.query ? "" : d.source || "") +
+            '" placeholder="' +
+            srcPh +
+            '" autocomplete="off"><datalist id="streamSourceList">' +
+            PIPE.tables.map((t) => '<option value="' + esc(t) + '">').join("") +
+            '</datalist><div class="hint">' +
+            (PIPE.tables.length ? fmt(PIPE.tables.length) + " found at the source. Start typing to filter." : isFile || isApi ? "Wildcards like *.csv pick up every matching file." : "Loading the list of tables…") +
+            "</div></div>" +
+            (isFile || isApi
+              ? ""
+              : '<div class="field"><label for="streamQuery">Or a SQL query run at the source <span class="hint">(optional)</span></label><textarea id="streamQuery" rows="2" placeholder="SELECT o.*, c.city FROM orders o JOIN customers c USING (customer_id)">' +
+                esc(d.query ? d.source : "") +
+                "</textarea></div>") +
+            selectField("Mode", "streamMode", modes, d.mode || "full") +
+            '<div class="field"><label for="streamCursor">Cursor column <span class="hint">(append / upsert)</span></label><input id="streamCursor" list="streamColList" value="' +
+            esc(d.cursor || "") +
+            '" placeholder="updated_at" autocomplete="off"><datalist id="streamColList">' +
+            PIPE.columns.map((c) => '<option value="' + esc(c) + '">').join("") +
+            '</datalist><div class="hint">' +
+            (isFile ? "Not needed for files: new files are detected automatically." : "An increasing id or last-modified timestamp.") +
+            '</div></div><div class="field"><label for="streamKeys">Key column(s) <span class="hint">(upsert)</span></label><input id="streamKeys" value="' +
+            esc((d.keys || []).join(", ")) +
+            '" placeholder="order_id" autocomplete="off"><div class="hint">Comma-separated if a row is identified by several columns.</div></div><div class="field"><label for="streamInterval">Schedule</label><select id="streamInterval">' +
+            (PIPE.ov.intervals || [0])
+              .map((v) => '<option value="' + v + '"' + (Number(d.interval || 0) === v ? " selected" : "") + ">" + esc(INTERVAL_LABELS[v] || v + " min") + "</option>")
+              .join("") +
+            "</select></div>" +
+            inputField("Staging table name (optional)", "streamTarget", "named automatically", d.target || "") +
+            '</div><div class="hint" id="streamModeHelp" style="margin-top:10px">' +
+            esc(MODE_HELP[d.mode || "full"]) +
+            '</div><div class="head-buttons" style="margin-top:14px"><button class="btn orange" data-action="stream-save" data-run="1">Save and sync now</button><button class="btn" data-action="stream-save">Save</button><button class="btn" data-action="stream-cancel">Cancel</button></div><div id="streamEditorMsg"></div></div>'
+          );
+        }
+        async function openStreamEditor(connId, existing) {
+          const conn = PIPE.ov.connections.find((c) => c.id === connId);
+          const isQuery = existing && /^\s*(select|with)\s/i.test(existing.source || "");
+          PIPE.draft = existing ? { ...existing, query: isQuery } : { connection_id: connId, mode: "full", interval: 0 };
+          PIPE.tables = [];
+          PIPE.columns = [];
+          $("#streamEditor").innerHTML = streamEditorHTML();
+          $("#streamEditor").scrollIntoView({ behavior: "smooth", block: "start" });
+          if (conn && !["http", "rest"].includes(conn.type)) {
+            try {
+              PIPE.tables = (await api("/api/pipeline/source_tables", { id: connId })).tables;
+            } catch (e) {
+              toast("Could not list tables: " + e.message);
+            }
+            const keep = readStreamEditor();
+            PIPE.draft = { ...PIPE.draft, ...keep };
+            $("#streamEditor").innerHTML = streamEditorHTML();
+            if (PIPE.draft.source) loadStreamColumns();
+          }
+        }
+        async function loadStreamColumns() {
+          const d = PIPE.draft,
+            conn = PIPE.ov.connections.find((c) => c.id === d.connection_id);
+          if (!conn || ["files", "s3", "http", "rest"].includes(conn.type)) return;
+          const q = $("#streamQuery") && $("#streamQuery").value.trim(),
+            source = q || ($("#streamSource") && $("#streamSource").value.trim());
+          if (!source) return;
+          try {
+            PIPE.columns = (await api("/api/pipeline/source_columns", { id: d.connection_id, source })).columns;
+            const list = $("#streamColList");
+            if (list) list.innerHTML = PIPE.columns.map((c) => '<option value="' + esc(c) + '">').join("");
+          } catch (_) {}
+        }
+        function readStreamEditor() {
+          const q = $("#streamQuery") && $("#streamQuery").value.trim();
+          return {
+            source: q || ($("#streamSource") ? $("#streamSource").value.trim() : ""),
+            query: !!q,
+            mode: $("#streamMode") ? $("#streamMode").value : "full",
+            cursor: $("#streamCursor") ? $("#streamCursor").value.trim() : "",
+            keys: $("#streamKeys") ? $("#streamKeys").value.split(",").map((x) => x.trim()).filter(Boolean) : [],
+            interval: $("#streamInterval") ? Number($("#streamInterval").value) : 0,
+            target: $("#streamTarget") ? $("#streamTarget").value.trim() : "",
+          };
+        }
+        async function saveStream(runNow) {
+          const d = { ...PIPE.draft, ...readStreamEditor() };
+          const r = await withBusy("Saving sync…", () =>
+            api("/api/pipeline/save_stream", {
+              id: d.id,
+              connection_id: d.connection_id,
+              source: d.source,
+              mode: d.mode,
+              cursor: d.cursor,
+              keys: d.keys.join(","),
+              interval: d.interval,
+              target: d.target,
+            }),
+          );
+          PIPE.draft = null;
+          $("#streamEditor").innerHTML = "";
+          if (runNow) await api("/api/pipeline/sync_now", { id: r.id });
+          await loadPipeline();
+          refreshPipelineDom();
+          toast(runNow ? "Saved. Syncing staging." + r.target + "…" : "Sync saved: staging." + r.target);
+        }
+        async function pipelineAction(act, el) {
+          const id = el.dataset.id;
+          switch (act) {
+            case "pipe-refresh":
+              await loadPipeline();
+              refreshPipelineDom();
+              return true;
+            case "conn-new":
+              openConnEditor(null);
+              return true;
+            case "conn-edit":
+              openConnEditor(PIPE.ov.connections.find((c) => c.id === id));
+              return true;
+            case "conn-cancel":
+              PIPE.editing = null;
+              $("#connEditor").innerHTML = "";
+              return true;
+            case "conn-save":
+              await saveConn(!!el.dataset.test);
+              return true;
+            case "conn-sfkey": {
+              const cid = await saveConn(false);
+              const k = await withBusy("Generating a key pair…", () => api("/api/pipeline/snowflake_key", { id: cid }));
+              $("#connEditorMsg").innerHTML =
+                '<div class="notice blue" style="margin-top:12px"><b>Key pair created.</b> The private key stays on this computer (' +
+                esc(k.path) +
+                '). Run this once in a Snowflake worksheet as a user allowed to alter that user (for a trial, ACCOUNTADMIN), then select <b>Save and test</b>.</div><textarea class="sql-editor" rows="4" readonly id="sfKeySql">' +
+                esc(k.sql) +
+                '</textarea><button class="btn small" style="margin-top:8px" data-action="copy-sfkey">Copy SQL</button>';
+              await loadPipeline();
+              const c = PIPE.ov.connections.find((x) => x.id === cid);
+              if (c) PIPE.editing.params = c.params;
+              return true;
+            }
+            case "copy-sfkey": {
+              const t = $("#sfKeySql");
+              t.select();
+              try {
+                await navigator.clipboard.writeText(t.value);
+              } catch (_) {
+                document.execCommand("copy");
+              }
+              toast("SQL copied.");
+              return true;
+            }
+            case "conn-test": {
+              const c = PIPE.ov.connections.find((x) => x.id === id);
+              const t = await withBusy("Testing " + c.name + "…", () => api("/api/pipeline/test_connection", { id }));
+              toast((t.ok ? "Connected: " : "Test failed: ") + t.message);
+              await loadPipeline();
+              refreshPipelineDom();
+              return true;
+            }
+            case "conn-delete": {
+              const c = PIPE.ov.connections.find((x) => x.id === id);
+              if (!confirm("Delete the connection '" + c.name + "'? Its saved password or token is deleted too.")) return true;
+              await api("/api/pipeline/delete_connection", { id });
+              await loadPipeline();
+              refreshPipelineDom();
+              toast("Connection deleted.");
+              return true;
+            }
+            case "stream-new":
+              await openStreamEditor(id, null);
+              return true;
+            case "stream-edit": {
+              const s = PIPE.ov.streams.find((x) => x.id === id);
+              await openStreamEditor(s.connection_id, s);
+              return true;
+            }
+            case "stream-cancel":
+              PIPE.draft = null;
+              $("#streamEditor").innerHTML = "";
+              return true;
+            case "stream-save":
+              await saveStream(!!el.dataset.run);
+              return true;
+            case "stream-sync":
+              await api("/api/pipeline/sync_now", { id });
+              await loadPipeline();
+              refreshPipelineDom();
+              toast("Sync started.");
+              return true;
+            case "stream-reset":
+              if (!confirm("Start this sync from scratch next time? Incremental progress (cursor and loaded files) is forgotten; the staging table is kept until the next run.")) return true;
+              await api("/api/pipeline/reset_stream", { id });
+              await loadPipeline();
+              refreshPipelineDom();
+              toast("Sync reset. The next run reloads everything.");
+              return true;
+            case "stream-delete": {
+              const s = PIPE.ov.streams.find((x) => x.id === id);
+              if (!confirm("Delete the sync into staging." + s.target + "?")) return true;
+              const drop = confirm("Also delete the staging table staging." + s.target + " and its data?\n\nOK = delete the table too, Cancel = keep the table.");
+              await api("/api/pipeline/delete_stream", { id, drop });
+              await loadPipeline();
+              refreshPipelineDom();
+              toast("Sync deleted.");
+              return true;
+            }
+            case "stream-analyse": {
+              const table = el.dataset.table;
+              const r = await withBusy("Opening staging." + table + "…", () => api("/api/open_staged", { table, link: true }));
+              activateEngine(r.meta);
+              go("dataset");
+              toast("staging." + table + " is now the active dataset. It refreshes after each sync of that table.");
+              return true;
+            }
+            case "staged-sql":
+              go("sql").then(() => {
+                const ed = $("#sqlEditor");
+                if (ed) ed.value = "SELECT *\nFROM staging." + el.dataset.table + "\nLIMIT 100;";
+              });
+              return true;
+          }
+          return false;
+        }
+        // Watch for data refreshed by a background sync and redraw the view.
+        let statusTimer = null;
+        function startStatusPolling() {
+          clearInterval(statusTimer);
+          statusTimer = setInterval(async () => {
+            if (!engineActive || !E.meta || document.hidden || busyCount > 0) return;
+            try {
+              const st = await api("/api/status");
+              if (st.dataset && st.dataVersion !== E.meta.version) {
+                const meta = (await api("/api/meta")).meta;
+                setMeta(meta);
+                const safe = ["overview", "dataset", "profile", "statistics", "visualize", "pivot", "funnels", "report", "regression"];
+                if (safe.includes(activeView)) await go(activeView);
+                else render();
+                toast("New data arrived from a sync. The view is up to date.");
+              }
+            } catch (_) {}
+          }, 10000);
+        }
         function render() {
           const c = $("#workspaceContent");
           const views = {
@@ -4184,6 +4827,7 @@
             formulas: formulaTemplate,
             report: reportTemplate,
             learning: learningTemplate,
+            connections: connectionsTemplate,
           };
           try {
             c.innerHTML = (views[activeView] || overviewTemplate)();
@@ -4197,7 +4841,10 @@
           $("#crumbName").textContent = (
             names[activeView] || "Overview"
           ).toUpperCase();
-          $("#activeDatasetName").textContent = datasetName;
+          $("#activeDatasetName").textContent =
+            datasetName +
+            (engineActive && E.meta && E.meta.linkedStream ? " · live" : "") +
+            (engineActive && E.meta && E.meta.updatedAt ? " · updated " + new Date(E.meta.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "");
           $("#navRows").textContent = fmt(rowCount());
           const card = $("#runtimeCard");
           if (card) {
@@ -4252,6 +4899,21 @@
           $("#sidebar").classList.remove("open");
           $("#mobileOverlay").classList.remove("show");
           const seq = ++navSeq;
+          if (view === "connections" && ENGINE) {
+            $$(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+            try {
+              await withBusy("Loading connections…", loadPipeline);
+            } catch (err) {
+              toast(err.message || String(err));
+            }
+            if (seq !== navSeq) return;
+            PIPE.editing = null;
+            PIPE.draft = null;
+            render();
+            startPipelinePolling();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+          }
           if (engineActive) {
             $("#crumbName").textContent = (names[view] || "Overview").toUpperCase();
             $$(".nav-btn").forEach((b) =>
@@ -5419,9 +6081,11 @@
               } else go("dataset");
               return;
             }
-            const act = e.target.closest("[data-action]")?.dataset.action;
+            const actEl = e.target.closest("[data-action]");
+            const act = actEl?.dataset.action;
             if (!act) return;
             try {
+              if (await pipelineAction(act, actEl)) return;
               switch (act) {
                 case "choose-file":
                   $("#fileInput").click();
@@ -5634,8 +6298,22 @@
             }
           });
           document.addEventListener("change", (e) => {
-            if (e.target && e.target.id === "testGroup")
+            const id = e.target && e.target.id;
+            if (id === "testGroup")
               refreshGroupOptions().catch((err) => toast(err.message));
+            if (id === "connType" && PIPE.editing) {
+              const keepName = $("#connName").value;
+              PIPE.editing = { ...PIPE.editing, type: e.target.value, params: {}, secretsSet: [], name: keepName };
+              $("#connEditor").innerHTML = connEditorHTML();
+            }
+            if (id === "streamMode") {
+              const h = $("#streamModeHelp");
+              if (h) h.textContent = MODE_HELP[e.target.value] || "";
+            }
+            if (id === "streamSource" || id === "streamQuery") {
+              if (PIPE.draft) PIPE.draft = { ...PIPE.draft, ...readStreamEditor() };
+              loadStreamColumns();
+            }
           });
           $("#fileInput").addEventListener("change", (e) => {
             const f = e.target.files[0];
@@ -5671,6 +6349,7 @@
               toast(err.message || String(err));
             }
           }
+          if (ENGINE) startStatusPolling();
           go(activeView);
         }
         init();
