@@ -150,7 +150,7 @@ A second successful run processed 1,000,000 rows × 10 columns on the same repor
 
 The independent expected sum was `4999995475.08`; DuckDB returned `4999995475.080004`, within the script's floating-point tolerance. The raw observation is preserved in [`benchmarks/results/ci-smoke-1m-32fe7af.json`](../benchmarks/results/ci-smoke-1m-32fe7af.json).
 
-The two runs suggest the current local-engine path can complete this particular synthetic import/profile and query workload at 100,000 and 1,000,000 rows on the recorded runner. They do **not** establish behavior at 10 million rows, other file formats, higher missingness/cardinality, different machines, or all ReData operations. Both are single-run CI baselines; memory was not measured, and query timings include HTTP overhead.
+The two runs show the local-engine path completed this particular synthetic import/profile and query workload at both sizes on GitHub-hosted Linux runners. As a descriptive comparison only, row count increased 10×, import-plus-profile time increased about 6.72×, and median SQL request latency increased about 3.05×. This is not a reliable scaling law: these are single runs, exact host allocation may differ, and query timings include HTTP overhead. The results do **not** establish behavior at 10 million rows, other file formats, higher missingness/cardinality, different machines, or all ReData operations. Peak memory was not measured.
 
 These statuses do not mean a feature fails or succeeds; they mean that this report does not yet contain independently reproducible evidence for the relevant claim.
 
