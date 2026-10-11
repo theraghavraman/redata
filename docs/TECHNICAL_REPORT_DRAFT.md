@@ -96,7 +96,7 @@ A failed run is a result. Record the input, configuration, observed failure, err
 
 ## 6. Results
 
-**Status: Pending execution and verification.**
+**Status: Full evaluation pending.** A CI workflow has been added to run a bounded, 100,000-row local-engine HTTP smoke benchmark and upload its JSON results as a workflow artifact. That test exercises real staging/import, metadata, paginated rows, repeated SQL aggregation, and an unauthenticated-request check. Its result must be cited with the exact workflow run and runner environment; it is not a reproduction of the historical 10-million-row README timings. The broader workload matrix and independent reproduction remain pending.
 
 | Evaluation item | Status | Evidence required |
 |---|---|---|
@@ -124,6 +124,7 @@ Before the report is treated as a completed evaluation, publish or link:
 
 - The exact source commit or release.
 - Dataset-generation scripts and permitted test data.
+- CI smoke-benchmark JSON artifact, with workflow URL, source commit and runner environment.
 - Benchmark commands and configuration.
 - Raw timing and resource logs.
 - Analysis scripts used to summarize results.
@@ -141,7 +142,8 @@ This draft establishes a testable scope for documenting and evaluating ReData. N
 
 - Initial draft: defined research questions, scope, evaluation design, evidence requirements, and unverified-result labels.
 - Claims-and-evidence register added to distinguish documentation-level claims from measured and independently reproduced findings.
-- Standard-library regression tests and a GitHub Actions workflow added for the synthetic dataset generator. These tests do not evaluate ReData application performance.
+- Standard-library regression tests added for the synthetic dataset generator.
+- Added a local-engine HTTP smoke benchmark and CI workflow to record a bounded workload and correctness checks. This is a CI baseline, not an independent reproduction of historical README timings.
 
 
 ## Licensing and attribution
