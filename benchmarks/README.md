@@ -63,3 +63,13 @@ python benchmarks/run_engine_smoke.py --rows 100000 --columns 10 --repeats 5 --o
 ```
 
 The JSON output records the source commit when supplied by CI, Python/platform/DuckDB versions, dataset checksum, stage/import timings, individual SQL query timings, pagination latency, and correctness checks. GitHub Actions runs this smoke benchmark on a hosted runner and uploads the JSON as a workflow artifact. Treat those results as an environment-specific baseline; they do not independently reproduce the historical README timings or establish a universal file-size limit. Larger runs should be performed separately on a documented target machine.
+
+
+## Preserved CI results
+
+Two successful GitHub-hosted local-engine smoke runs have their raw JSON committed for long-term review:
+
+- [100,000 rows](results/ci-smoke-100k-8d73fa1.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175393938)
+- [1,000,000 rows](results/ci-smoke-1m-32fe7af.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175438341)
+
+These are single-run observations on a hosted runner, not a multi-machine benchmark or reproduction of the README's historical 10-million-row figures. The JSON files record environment, dataset checksum, individual query timings, and correctness checks. The workflow also uploads the same result as an artifact; GitHub artifacts are temporary, so the committed JSON is the durable record.
