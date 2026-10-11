@@ -159,10 +159,6 @@ def main() -> int:
                 if len(meta.get("columns", [])) != args.columns:
                     raise AssertionError(f"Expected {args.columns} columns; got {len(meta.get('columns', []))}")
 
-            # Capture the approximate sampled engine-process RSS before shutdown.
-            monitor_stop.set()
-            monitor_thread.join(timeout=1)
-
             # Correctness oracle independent of DuckDB: the generator's value
             # column is deterministic and missing-rate is fixed at zero.
             expected_sum = math.fsum(round(((i * 7919) % 1000003) / 100.0, 4) for i in range(args.rows))
@@ -189,6 +185,10 @@ def main() -> int:
                 raise AssertionError(f"Expected five rows from paged API: {page}")
             if int(page["rows"][0]["id"]) != 0:
                 raise AssertionError(f"Unexpected first paged row: {page['rows'][0]}")
+
+            # Capture approximate sampled engine-process RSS through the final request.
+            monitor_stop.set()
+            monitor_thread.join(timeout=1)
 
             result = {
                 "schema_version": 2,
