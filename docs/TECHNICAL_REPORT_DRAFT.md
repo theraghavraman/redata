@@ -224,12 +224,31 @@ The independent expected sum was `49999986822.75`; DuckDB returned `49999986822.
 
 This run establishes that the tested code completed a deterministic 10-million-row, 10-column CSV import/profile and query smoke workload on the recorded GitHub-hosted Linux runner. It does not establish the historical README's reported 723 MB file behavior or its timings, because the generated file here is about 1.057 GB and the exact prior input, source revision, and machine conditions are unavailable. The result is one run; no peak-memory measurement was collected. The large benchmark is now configured for manual dispatch, while routine pushes run the smaller CI baseline to avoid repeatedly running expensive stress tests.
 
-## Change history
+### 6.5 Repeated one-million-row run with sampled process RSS
+
+After adding repeated import/profile measurements and an approximate RSS sampler, a further run passed at [GitHub Actions run 38175832918](https://github.com/theraghavraman/redata/actions/runs/38175832918), source commit `b3714c1a83c52609483a89fa5d70c382c77c0f3b`.
+
+| Measurement | Observed result |
+|---|---:|
+| Dataset | 1,000,000 rows × 10 columns; 104,750,872 bytes |
+| Stage API, three observations | 56.211, 63.417, 53.053 ms |
+| Stage API median | 56.211 ms |
+| Import plus profiling, three observations | 2,140.523, 2,183.861, 2,171.758 ms |
+| Import plus profiling median | 2,171.758 ms |
+| Sampled peak engine-process RSS | 624,344 KiB (about 609.7 MiB) |
+| SQL aggregate HTTP request, five observations | 5.211, 4.286, 4.214, 5.995, 4.155 ms |
+| Median SQL aggregate HTTP request | 4.286 ms |
+| Five-row page request | 4.762 ms |
+| Correctness and authentication checks | Passed |
+
+The memory value is an approximate Linux process RSS sampled from `/proc/<pid>/status` every 50 ms while the engine was serving the workload. It is not DuckDB's internal allocation, total system memory, or a guaranteed peak; brief spikes may be missed. The import repetitions use the same file and engine process, so cache state may differ between repetitions. The raw JSON is preserved in [`benchmarks/results/ci-repeat-1m-b3714c1.json`](../benchmarks/results/ci-repeat-1m-b3714c1.json).
+
+This adds repeated observations and a documented memory estimate for a 1M-row workload. It does not provide repeated 10M-row import timings or replace a controlled multi-machine study.\n\n## Change history
 
 - Initial draft: defined research questions, scope, evaluation design, evidence requirements, and unverified-result labels.
 - Claims-and-evidence register added to distinguish documentation-level claims from measured and independently reproduced findings.
 - Standard-library regression tests added for the synthetic dataset generator.
-- Added a local-engine HTTP smoke benchmark and CI workflow; successful 100,000-row, 1,000,000-row, and 10,000,000-row (7-column) hosted-runner results are recorded in Sections 6.1–6.3, with raw JSON committed under `benchmarks/results/`. The 10M/10-column run is now recorded in Section 6.4. It reproduces the row/column scale, but not the historical input or timing conditions. These are CI baselines, not independent reproduction of the historical README timings.
+- Added a local-engine HTTP smoke benchmark and CI workflow; successful 100,000-row, 1,000,000-row, and 10,000,000-row (7-column) hosted-runner results are recorded in Sections 6.1–6.3, with raw JSON committed under `benchmarks/results/`. The 10M/10-column run is now recorded in Section 6.4. A repeated 1M-row run with sampled process RSS is recorded in Section 6.5. These results improve the baseline but do not independently reproduce the historical README timings.
 
 
 ## Licensing and attribution
