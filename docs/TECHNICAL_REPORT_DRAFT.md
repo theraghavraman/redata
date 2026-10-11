@@ -100,10 +100,10 @@ A failed run is a result. Record the input, configuration, observed failure, err
 
 | Evaluation item | Status | Evidence required |
 |---|---|---|
-| Import duration by dataset size | Not yet verified in this study | Raw timing logs and environment |
+| Import duration by dataset size | Measured only for the 100k and 1M CI smoke workloads | Multi-run measurements at target sizes on controlled hardware |
 | Peak memory | Not yet verified in this study | Documented measurement method |
-| Query and transformation duration | Not yet verified in this study | Repeated workload measurements |
-| Analytical output correctness | Not yet verified in this study | Independent reference comparisons |
+| Query and transformation duration | SQL aggregate and page-request timings measured for the 100k and 1M smoke workloads only | Repeated measurements for representative query and transformation workloads |
+| Analytical output correctness | Basic row/column counts, ID ranges, page contents, and one independent sum oracle passed for the smoke workloads | Broader independent fixtures for every supported operation and edge cases |
 | Browser-only versus local-engine comparison | Not yet verified in this study | Equivalent supported workloads |
 | Failure and timeout boundaries | Not yet verified in this study | Recorded failures and test conditions |
 | Reproducibility by another operator | Not yet verified in this study | Reproduction log or independent review |
