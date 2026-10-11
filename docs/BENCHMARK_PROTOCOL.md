@@ -80,3 +80,8 @@ python benchmarks/generate_dataset.py --output /tmp/redata-100k.csv --rows 10000
 ```
 
 The generator emits a JSON sidecar with parameters, byte size, and SHA-256. Retain the CSV and sidecar for each run. See [benchmark assets and usage](../benchmarks/README.md). The generator creates inputs only; it does not run ReData or establish performance results.
+
+
+## Local-engine smoke baseline
+
+A bounded integration run is now available via `benchmarks/run_engine_smoke.py`. It starts the local engine, stages and imports a generated CSV, validates row/column counts and an independent aggregate result, exercises pagination, and checks authentication. GitHub Actions uploads the JSON measurements as an artifact. Record the workflow URL, commit SHA, runner and artifact before citing any numbers. This smoke test is not a substitute for the full workload matrix or a reproduction of historical 10-million-row claims.
