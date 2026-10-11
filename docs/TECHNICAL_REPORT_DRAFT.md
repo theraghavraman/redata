@@ -201,14 +201,35 @@ A larger smoke run passed on GitHub Actions at [run 38175528927](https://github.
 
 The independent expected sum was `49999986822.75`; DuckDB returned `49999986822.75003`, within the declared floating-point tolerance. The raw JSON is preserved in [`benchmarks/results/ci-smoke-10m-27e1126.json`](../benchmarks/results/ci-smoke-10m-27e1126.json).
 
-This is meaningful evidence that the tested local-engine path completed this particular 10-million-row synthetic workload with seven columns on the recorded GitHub-hosted Linux runner. It does **not** reproduce the README's 10-million-row, 10-column claim: this dataset has seven columns, and its generation pattern differs from the historical input. No peak-memory measurement was collected. A separate 10-million-row, 10-column run has been queued to test the README's stated shape more directly; its result must be recorded separately after completion.
+This is meaningful evidence that the tested local-engine path completed this particular 10-million-row synthetic workload with seven columns on the recorded GitHub-hosted Linux runner. It does **not** reproduce the README's 10-million-row, 10-column claim: this dataset has seven columns, and its generation pattern differs from the historical input. No peak-memory measurement was collected. A separate 10-million-row, 10-column run has now passed; see Section 6.4. Its generated CSV is larger than the historical README input, and the runner, exact input, and tested source revision differ, so this is a reproduction of the row/column scale—not a reproduction of the historical timings.
+
+### 6.4 Ten-million-row, ten-column CI stress result
+
+The run at [GitHub Actions run 38175634773](https://github.com/theraghavraman/redata/actions/runs/38175634773) passed on commit `efaf0aad3df0be06652d42ea50dc89d6a1a6f80b`. This matches the README's stated row and column counts, but uses a newly generated deterministic dataset rather than the historical input.
+
+| Measurement | Observed result |
+|---|---:|
+| Dataset | 10,000,000 rows × 10 columns |
+| CSV size | 1,057,509,670 bytes (about 1.057 GB decimal) |
+| Dataset SHA-256 | `233872c4ce666d82ed1645a02704522fc062dcb610cf4048495c3cff90e650e3` |
+| Stage local-path API | 34.394 ms |
+| Import plus profiling | 12,778.942 ms |
+| SQL aggregate query, 5 observations | 32.243, 33.858, 17.859, 16.236, 23.899 ms |
+| Median SQL aggregate query | 23.899 ms |
+| Five-row page API | 7.203 ms |
+| Correctness | Row/column counts, ID range, first page row, and independent `SUM(value)` check passed |
+| Security smoke check | Missing token rejected with HTTP 403 |
+
+The independent expected sum was `49999986822.75`; DuckDB returned `49999986822.7498`, within the declared floating-point tolerance. The raw JSON is preserved in [`benchmarks/results/ci-smoke-10m-10col-efaf0aa.json`](../benchmarks/results/ci-smoke-10m-10col-efaf0aa.json).
+
+This run establishes that the tested code completed a deterministic 10-million-row, 10-column CSV import/profile and query smoke workload on the recorded GitHub-hosted Linux runner. It does not establish the historical README's reported 723 MB file behavior or its timings, because the generated file here is about 1.057 GB and the exact prior input, source revision, and machine conditions are unavailable. The result is one run; no peak-memory measurement was collected. The large benchmark is now configured for manual dispatch, while routine pushes run the smaller CI baseline to avoid repeatedly running expensive stress tests.
 
 ## Change history
 
 - Initial draft: defined research questions, scope, evaluation design, evidence requirements, and unverified-result labels.
 - Claims-and-evidence register added to distinguish documentation-level claims from measured and independently reproduced findings.
 - Standard-library regression tests added for the synthetic dataset generator.
-- Added a local-engine HTTP smoke benchmark and CI workflow; successful 100,000-row, 1,000,000-row, and 10,000,000-row (7-column) hosted-runner results are recorded in Sections 6.1–6.3, with raw JSON committed under `benchmarks/results/`. The 10M/10-column run is pending. These are CI baselines, not yet a reproduction of the historical 10M/10-column README claim.
+- Added a local-engine HTTP smoke benchmark and CI workflow; successful 100,000-row, 1,000,000-row, and 10,000,000-row (7-column) hosted-runner results are recorded in Sections 6.1–6.3, with raw JSON committed under `benchmarks/results/`. The 10M/10-column run is now recorded in Section 6.4. It reproduces the row/column scale, but not the historical input or timing conditions. These are CI baselines, not independent reproduction of the historical README timings.
 
 
 ## Licensing and attribution
