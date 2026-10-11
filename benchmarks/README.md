@@ -72,6 +72,7 @@ Two successful GitHub-hosted local-engine smoke runs have their raw JSON committ
 - [100,000 rows](results/ci-smoke-100k-8d73fa1.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175393938)
 - [1,000,000 rows × 10 columns, single import](results/ci-smoke-1m-32fe7af.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175438341)
 - [1,000,000 rows × 10 columns, three import/profile repetitions and sampled RSS](results/ci-repeat-1m-b3714c1.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175832918)
+- [1,000,000 rows × 10 columns, expanded aggregate and read-only SQL checks](results/ci-repeat-1m-e92a050.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175950861)
 - [10,000,000 rows × 7 columns](results/ci-smoke-10m-27e1126.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175528927)
 - [10,000,000 rows × 10 columns](results/ci-smoke-10m-10col-efaf0aa.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175634773)
 
