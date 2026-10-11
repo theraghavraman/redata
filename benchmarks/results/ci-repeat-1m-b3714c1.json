@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "benchmark_type": "ReData local-engine HTTP smoke benchmark",
+  "status": "passed",
+  "note": "Environment-specific CI baseline; not a universal capacity claim or independent reproduction of prior README timings.",
+  "source_commit": "b3714c1a83c52609483a89fa5d70c382c77c0f3b",
+  "engine_version": "1.1.0",
+  "duckdb_version": "1.5.6",
+  "python_version": "3.14.8 (main, Oct 1 2026, 02:38:33) [GCC 13.3.0]",
+  "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "cpu_count": 4,
+  "rows": 1000000,
+  "columns": 10,
+  "seed": 20261012,
+  "missing_rate": 0,
+  "dataset_bytes": 104750872,
+  "dataset_sha256": "b228b4a2cc62504eb5a19517ce945e2d22de8d504d6714d64c25568f8009f561",
+  "staging_ms_observations": [
+    56.211,
+    63.417,
+    53.053
+  ],
+  "staging_ms_median": 56.211,
+  "import_and_profile_ms_observations": [
+    2140.523,
+    2183.861,
+    2171.758
+  ],
+  "import_and_profile_ms_median": 2171.758,
+  "import_repeats": 3,
+  "peak_engine_rss_kib_sampled": 624344,
+  "memory_measurement_method": "Linux /proc/<engine-pid>/status VmRSS sampled every 50 ms; approximate process RSS, not DuckDB allocation or system-wide peak",
+  "sql_query_ms": [
+    5.211,
+    4.286,
+    4.214,
+    5.995,
+    4.155
+  ],
+  "sql_query_median_ms": 4.286,
+  "page_5_rows_ms": 4.762,
+  "correctness": {
+    "row_count": true,
+    "column_count": true,
+    "id_min_max": [
+      0,
+      999999
+    ],
+    "sum_value_expected": 4999995475.08,
+    "sum_value_observed": 4999995475.080002,
+    "sum_value_matches": true,
+    "page_first_id": 0
+  },
+  "auth_check": "unauthenticated /api/status correctly returned HTTP 403",
+  "repeats": 5
+}
