@@ -127,3 +127,11 @@ These are external providers; ReData is independent and is not affiliated with o
 ## Design direction
 
 ReData uses a warm, light analytics-workbench aesthetic: a persistent sidebar, clear quality signals, readable charts and dense-but-breathable tool panels. The product direction was also laid out in a Higgsfield canvas: [ReData — Product UI direction](https://higgsfield.ai/canvas/a2d72e11-6257-47e5-bcd4-1e3465b4b5c7).
+
+
+## Licensing and third-party notices
+
+- Original ReData software source is licensed under the MIT License; see [LICENSE](LICENSE).
+- Original documentation and report prose under `docs/` are licensed under [CC BY 4.0](docs/LICENSE), unless a file states otherwise.
+- Third-party libraries and assets retain their own terms. See [Third-Party Notices and License Inventory](THIRD_PARTY_NOTICES.md) for the direct dependencies and browser-loaded assets identified so far.
+- The third-party inventory is an initial direct-dependency review, not a complete transitive-dependency SBOM. Before redistributing a packaged build, verify the exact resolved dependency versions and all bundled asset notices.
