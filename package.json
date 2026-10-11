@@ -1,0 +1,16 @@
+{
+  "name": "redata",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ReData: a browser-first analytics workspace. Static site, no build step.",
+  "type": "module",
+  "scripts": {
+    "test:unit": "node --test tests/core.test.mjs",
+    "test:e2e": "node tests/app.e2e.mjs",
+    "test": "npm run test:unit && npm run test:e2e",
+    "fixtures": "node tests/make-fixtures.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.0"
+  }
+}
