@@ -136,6 +136,7 @@ ReData uses a warm, light analytics-workbench aesthetic: a persistent sidebar, c
 - [Technical report draft](docs/TECHNICAL_REPORT_DRAFT.md) — system scope and planned evaluation; results are pending.
 - [Claims and evidence register](docs/CLAIMS_AND_EVIDENCE.md) — distinguishes documented capabilities, project-reported figures, and claims that still require testing.
 - [Benchmark protocol](docs/BENCHMARK_PROTOCOL.md) — repeatable test plan and evidence requirements.
+- [Local-engine smoke benchmark](benchmarks/run_engine_smoke.py) — exercises the actual local-engine HTTP API, validates basic outputs, and records environment-specific timings.
 - [Citation metadata](CITATION.cff) — software citation details.
 
 
