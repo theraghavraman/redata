@@ -48,7 +48,7 @@ jobs:
       - name: Run large local-engine benchmark (10 million rows, 10 columns)
         env:
           GITHUB_SHA: ${{ github.sha }}
-        run: python benchmarks/run_engine_smoke.py --rows 10000000 --columns 10 --repeats 5 --output benchmark-results/engine-smoke.json
+        run: python benchmarks/run_engine_smoke.py --rows 10000000 --columns 10 --import-repeats 1 --repeats 5 --output benchmark-results/engine-smoke.json
       - name: Upload benchmark result
         if: always()
         uses: actions/upload-artifact@v4
@@ -69,10 +69,10 @@ jobs:
           python-version: "3.x"
       - name: Install local-engine dependency
         run: python -m pip install --disable-pip-version-check "duckdb>=1.1.0"
-      - name: Run routine 100k local-engine smoke benchmark
+      - name: Run routine 1M local-engine smoke benchmark with repeated imports
         env:
           GITHUB_SHA: ${{ github.sha }}
-        run: python benchmarks/run_engine_smoke.py --rows 100000 --columns 10 --repeats 5 --output benchmark-results/engine-ci-smoke.json
+        run: python benchmarks/run_engine_smoke.py --rows 1000000 --columns 10 --import-repeats 3 --repeats 5 --output benchmark-results/engine-ci-smoke.json
       - name: Upload routine smoke result
         if: always()
         uses: actions/upload-artifact@v4
