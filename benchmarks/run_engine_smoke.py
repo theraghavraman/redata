@@ -156,7 +156,9 @@ def main() -> int:
             if not math.isclose(float(row["total"]), expected_sum, rel_tol=1e-10, abs_tol=1e-5):
                 raise AssertionError(f"SUM(value) mismatch: expected {expected_sum}, got {row['total']}")
 
+            page_started = time.perf_counter()
             page = request(base_url + "/api/rows", token, {"offset": 0, "limit": 5})
+            page_ms = (time.perf_counter() - page_started) * 1000
             if len(page.get("rows", [])) != 5:
                 raise AssertionError(f"Expected five rows from paged API: {page}")
             if int(page["rows"][0]["id"]) != 0:
@@ -183,7 +185,7 @@ def main() -> int:
                 "import_and_profile_ms": round(load_ms, 3),
                 "sql_query_ms": [round(x, 3) for x in query_ms],
                 "sql_query_median_ms": round(sorted(query_ms)[len(query_ms) // 2], 3),
-                "page_5_rows_ms": None,
+                "page_5_rows_ms": round(page_ms, 3),
                 "correctness": {
                     "row_count": int(row["n"]) == args.rows,
                     "column_count": len(meta["columns"]) == args.columns,
@@ -196,7 +198,6 @@ def main() -> int:
                 "auth_check": "unauthenticated /api/status correctly returned HTTP 403",
                 "repeats": args.repeats,
             }
-            result["page_5_rows_ms"] = round((time.perf_counter() - started) * 1000, 3)
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             print(json.dumps(result, indent=2))
