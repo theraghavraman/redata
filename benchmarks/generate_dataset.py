@@ -53,6 +53,8 @@ def main() -> int:
     args = parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     metadata_path = args.metadata or Path(str(args.output) + ".metadata.json")
+    if metadata_path.resolve() == args.output.resolve():
+        raise SystemExit("metadata path must differ from CSV output path")
     rng = random.Random(args.seed)
 
     headers = ["id", "category", "value", "score", "event_date"]
