@@ -1247,10 +1247,6 @@
           <span class="nav-icon">ƒ</span>Formula builder
         </button>
       </nav>
-      <div class="sidebar-label">SPACE & AEROSPACE</div>
-      <nav class="nav" aria-label="Space and aerospace tools">
-        <button class="nav-btn" data-view="space"><span class="nav-icon">✦</span>Space formats explorer</button>
-      </nav>
       <div class="sidebar-label">DELIVER & LEARN</div>
       <nav class="nav" aria-label="Deliver and learn">
         <button class="nav-btn" data-view="report">
@@ -1586,7 +1582,6 @@
           report: "Insights & reports",
           learning: "Learning roadmap",
           connections: "Connections",
-          space: "Space & Aerospace Formats",
         };
         const desc = {
           connections:
@@ -2547,106 +2542,6 @@
             selectField("Column", "dropColumn", cols(), cols()[0]) +
             '</div><button class="btn" data-action="drop-column">Remove selected column</button></div></div>'
           );
-        }
-        const SPACE_FORMATS = [
-          {ext:".fits / .fit / .fts",name:"FITS",family:"Astronomy & astrophysics",kind:"file",agency:"NASA · ESA · JAXA · observatories",use:"Astronomical images, spectra, event tables, light curves and multidimensional science cubes.",browser:"Header inspection and basic structural checks can run in-browser; scientific interpretation needs a FITS-aware reader.",level:"Inspect in browser",tags:["astronomy","science"]},
-          {ext:".evt",name:"Astronomy event list",family:"High-energy astronomy",kind:"file",agency:"NASA missions · JAXA missions",use:"Timestamped photon or event records; frequently a FITS table with a domain-specific extension.",browser:"Inspect the file signature and metadata where possible; extension alone is not a format guarantee.",level:"Inspect in browser",tags:["astronomy"]},
-          {ext:".lc",name:"Light curve",family:"Astronomy & astrophysics",kind:"file",agency:"NASA · ESA · JAXA",use:"Time-series brightness or signal measurements. Often stored as FITS or tables.",browser:"Can inspect tabular variants; FITS content requires a FITS parser.",level:"Partial browser support",tags:["astronomy","timeseries"]},
-          {ext:".pha / .arf / .rmf / .rsp",name:"High-energy instrument spectra & response",family:"Astronomy & astrophysics",kind:"file",agency:"NASA HEASARC missions and compatible tooling",use:"Spectra and calibration / response data for X-ray and high-energy analysis.",browser:"Identify known extension and inspect metadata; scientific validation is mission-specific.",level:"Metadata only",tags:["astronomy","calibration"]},
-          {ext:".cdf",name:"Common Data Format",family:"Space physics & time series",kind:"file",agency:"NASA SPDF · JAXA DARTS and research archives",use:"Multidimensional scientific variables with metadata, especially space and solar-terrestrial physics.",browser:"A complete reader/validator needs CDF-specific logic or a backend library.",level:"Metadata only",tags:["science","timeseries"]},
-          {ext:".nc / .nc4",name:"NetCDF",family:"Earth & atmospheric science",kind:"file",agency:"NASA · NOAA · ESA-related data services · research agencies",use:"Multidimensional geophysical arrays and labelled variables for climate, oceans and atmosphere.",browser:"Recognize file and show header/metadata only unless a NetCDF WASM reader is added.",level:"Metadata only",tags:["earth-observation","science"]},
-          {ext:".hdf / .h4 / .h5 / .hdf5",name:"Hierarchical Data Format",family:"Earth & instrument science",kind:"file",agency:"NASA Earth science and many science missions",use:"Large arrays, image bands, measurements and structured metadata.",browser:"HDF4/HDF5 need a format-aware library; inspection-only is the safe browser baseline.",level:"Metadata only",tags:["earth-observation","science"]},
-          {ext:".tif / .tiff",name:"TIFF / GeoTIFF",family:"Remote sensing & GIS",kind:"file",agency:"NASA · ESA · ISRO · CSA and geospatial providers",use:"Raster scenes, elevation, classification masks and georeferenced imagery.",browser:"TIFF previews need a decoder; GeoTIFF validation must inspect georeferencing tags and CRS.",level:"Preview with decoder",tags:["earth-observation","geospatial"]},
-          {ext:".jp2",name:"JPEG 2000",family:"Remote sensing & imagery",kind:"file",agency:"ESA Copernicus Sentinel and other imaging missions",use:"High-quality satellite image bands and image products, including Sentinel-2 product assets.",browser:"Use a JPEG 2000 decoder; native browser image support is not guaranteed.",level:"Decoder required",tags:["earth-observation","imagery"]},
-          {ext:".safe / SAFE",name:"Sentinel SAFE product",family:"Earth observation package",kind:"package",agency:"ESA / Copernicus Sentinel",use:"Product folder/package holding measurements, manifest.safe, XML metadata, calibration and previews.",browser:"Validate package structure and manifest references; do not treat SAFE as one binary file.",level:"Package validation",tags:["earth-observation","package"]},
-          {ext:"EOPF / Zarr / COG / NetCDF4-HDF5",name:"Copernicus EOPF products",family:"Earth observation package",kind:"package",agency:"ESA / Copernicus Sentinel",use:"Harmonized product model and storage options for Sentinel data, including cloud-optimized raster and multidimensional data.",browser:"Zarr requires group/array metadata and chunk validation; COG requires TIFF tiling, overview and range-read checks.",level:"Package validation",tags:["earth-observation","cloud"]},
-          {ext:".grib / .grb / .grb2",name:"GRIB",family:"Weather & atmosphere",kind:"file",agency:"Meteorological satellite and weather services worldwide",use:"Gridded numerical weather prediction and meteorological fields.",browser:"Can identify signature; proper validation needs GRIB message decoding and edition checks.",level:"Metadata only",tags:["weather","science"]},
-          {ext:".zarr",name:"Zarr arrays",family:"Cloud science data",kind:"package",agency:"Earth-observation and science data platforms",use:"Chunked N-dimensional arrays, often served from object storage for scalable analysis.",browser:"Check .zarray/.zgroup or v3 metadata, chunk references and array shape; archive and version conventions vary.",level:"Package validation",tags:["cloud","science"]},
-          {ext:".shp + .shx + .dbf + .prj",name:"ESRI Shapefile set",family:"Geospatial vectors",kind:"package",agency:"Earth-observation & mapping organisations",use:"Vector features plus geometry index, attributes and optional projection information.",browser:"Validate required sidecar pairing and basic headers; CRS and geometry validation needs a GIS parser.",level:"Package validation",tags:["geospatial"]},
-          {ext:".gpkg",name:"GeoPackage",family:"Geospatial database",kind:"file",agency:"Geospatial science and mapping organisations",use:"SQLite-based container for vector layers, raster tiles and spatial reference metadata.",browser:"Validate SQLite container/header; inspect tables and CRS with a GeoPackage-aware reader.",level:"Backend / WASM reader",tags:["geospatial","database"]},
-          {ext:".geojson / .json",name:"GeoJSON",family:"Geospatial vectors",kind:"file",agency:"Mapping and Earth-observation programmes",use:"Point, line, polygon and feature-collection vectors.",browser:"Can validate JSON syntax and GeoJSON structure in-browser, including coordinate array shape.",level:"Browser validation",tags:["geospatial","json"]},
-          {ext:".kml / .kmz",name:"KML / KMZ",family:"Geospatial visualisation",kind:"file",agency:"Earth-observation and mapping services",use:"Map overlays and geographic annotations; KMZ is commonly a zipped KML package.",browser:"KML can be checked as XML; KMZ needs ZIP inspection and contained KML validation.",level:"Browser validation",tags:["geospatial","package"]},
-          {ext:".vrt",name:"GDAL Virtual Raster",family:"Geospatial raster",kind:"file",agency:"GIS workflows and remote-sensing analysis",use:"XML description that references one or more source raster datasets.",browser:"Parse XML and verify referenced assets where accessible; not a standalone raster.",level:"Reference validation",tags:["geospatial","xml"]},
-          {ext:".lbl / .xml + data",name:"PDS3 / PDS4 labels and product files",family:"Planetary science archive",kind:"package",agency:"NASA PDS · ESA PSA · JAXA DARTS · international partners",use:"Labels describe planetary science products and connect files to metadata, arrays and tables.",browser:"PDS4 XML may be schema-validated; full compliance needs the versioned PDS information model and product context.",level:"Standards-aware validation",tags:["planetary","archive"]},
-          {ext:".img / .qub / .tab",name:"Planetary instrument products",family:"Planetary science",kind:"file",agency:"NASA PDS3 legacy products and mission archives",use:"Image arrays, QUBE data and tabular products; interpretation depends on label and mission schema.",browser:"Must be read with accompanying label/metadata; never validate solely by extension.",level:"Label-aware validation",tags:["planetary"]},
-          {ext:".bsp",name:"SPICE SPK kernel",family:"Navigation & ephemerides",kind:"file",agency:"NASA NAIF · ESA PSA · JAXA missions and partners",use:"Spacecraft, planet and satellite trajectory / ephemeris data.",browser:"Check SPICE identification bytes only; actual kernel validation and query require SPICE Toolkit.",level:"Signature only",tags:["spice","navigation"]},
-          {ext:".bc",name:"SPICE CK kernel",family:"Navigation & pointing",kind:"file",agency:"NASA NAIF · international planetary missions",use:"Spacecraft attitude and pointing information.",browser:"Signature check only; use SPICE Toolkit for semantic validation.",level:"Signature only",tags:["spice","navigation"]},
-          {ext:".bpc / .tpc",name:"SPICE PCK kernels",family:"Planetary orientation",kind:"file",agency:"NASA NAIF · planetary missions",use:"Planetary constants and body orientation.",browser:"Signature check only; complete checks require SPICE Toolkit.",level:"Signature only",tags:["spice","navigation"]},
-          {ext:".tf / .ti / .tls / .tsc / .tm",name:"SPICE text kernels",family:"Navigation & mission constants",kind:"file",agency:"NASA NAIF · international planetary missions",use:"Reference frames, instrument definitions, leap seconds, spacecraft clocks and meta-kernel lists.",browser:"Text kernels can be inspected locally, but semantic checks require SPICE-specific parsing.",level:"Text inspection",tags:["spice","navigation"]},
-          {ext:".dsk / .bds",name:"SPICE DSK shape kernel",family:"Planetary geometry",kind:"file",agency:"NASA NAIF and planetary mission archives",use:"Digital shape and surface geometry models.",browser:"Signature only in browser; full validation requires SPICE Toolkit.",level:"Signature only",tags:["spice","geospatial"]},
-          {ext:".bin / .raw / .dat",name:"Raw payload / instrument binary",family:"Telemetry & instrument data",kind:"file",agency:"All space programmes; layout is usually mission-specific",use:"Unprocessed or encoded instrument records, often with a separate schema or data dictionary.",browser:"Unknown binary formats cannot be semantically validated without the mission's layout definition.",level:"Mission-specific",tags:["telemetry","binary"]},
-          {ext:".pkt / .tlm",name:"Packet / telemetry file",family:"Telemetry & mission operations",kind:"file",agency:"Mission control and ground-segment systems",use:"Telemetry packets, event records or packetized instrument output under local naming conventions.",browser:"Validate a specific packet dictionary or CCSDS packet profile; extension is not enough.",level:"Mission-specific",tags:["telemetry"]},
-          {ext:"CCSDS TM / TC / AOS / CFDP",name:"CCSDS data-link and file-delivery standards",family:"Space communications",kind:"standard",agency:"International space agencies and ground networks",use:"Transfer frames, telecommands, telemetry and file delivery over space links.",browser:"These are protocols, not file extensions; profile-aware decoder needed.",level:"Protocol decoder",tags:["ccsds","telemetry"]},
-          {ext:"HRIT / LRIT",name:"High-/Low-Rate Information Transmission",family:"Satellite broadcasting",kind:"standard",agency:"NOAA GOES · JMA Himawari and compatible services",use:"Satellite imagery and data broadcasting formats; delivery representations can differ from native product format.",browser:"Require HRIT/LRIT decoder; native source product may be NetCDF.",level:"Protocol decoder",tags:["weather","telemetry"]},
-          {ext:".pcap / .pcapng",name:"Network packet capture",family:"Ground systems & networking",kind:"file",agency:"Ground stations and mission IT systems",use:"Captured IP traffic for diagnosing ground network interactions.",browser:"Magic/header checks and metadata are possible; full packet analysis needs a protocol dissector.",level:"Inspect in browser",tags:["network","operations"]},
-          {ext:".log / .json / .yaml / .yml",name:"Mission logs & configuration",family:"Mission operations",kind:"file",agency:"Spacecraft operations and ground systems",use:"Operations logs, telemetry dictionaries, configuration, event timelines and processing logs.",browser:"Plain-text, JSON and YAML syntax validation can run locally.",level:"Browser validation",tags:["operations","text"]},
-          {ext:".step / .stp",name:"STEP / ISO 10303 CAD",family:"Aerospace engineering",kind:"file",agency:"Spacecraft and aerospace engineering supply chains",use:"CAD part, assembly and product data exchange.",browser:"Text STEP files may be inspected; full geometry validation needs a CAD kernel.",level:"Metadata only",tags:["engineering","cad"]},
-          {ext:".iges / .igs",name:"IGES CAD exchange",family:"Aerospace engineering",kind:"file",agency:"Spacecraft and aerospace engineering supply chains",use:"Legacy geometry interchange for engineering drawings and surfaces.",browser:"Header/section structure checks are possible; geometry validation needs CAD software.",level:"Metadata only",tags:["engineering","cad"]},
-          {ext:".stl / .obj / .gltf / .glb",name:"3D geometry & scene assets",family:"Aerospace engineering & visualisation",kind:"file",agency:"Engineering, simulation and visualisation pipelines",use:"Surface mesh, geometry and 3D asset exchange.",browser:"GLTF/OBJ and binary signatures can receive basic checks; geometry semantics require parsers.",level:"Partial browser support",tags:["engineering","3d"]},
-          {ext:".vtk / .vtu / .vtp / .cgns",name:"Scientific simulation data",family:"Aerospace engineering & simulation",kind:"file",agency:"Engineering labs and simulation teams",use:"Meshes, fields, computational fluid dynamics, and finite-element / numerical simulation outputs.",browser:"Format-specific parser needed; XML-based VTK variants can receive structural checks.",level:"Metadata only",tags:["engineering","simulation"]},
-          {ext:".nas / .bdf / .op2 / .inp / .odb / .unv",name:"Finite-element and solver files",family:"Aerospace engineering & simulation",kind:"file",agency:"Aerospace structural and thermal analysis",use:"Solver input decks and numerical results for stress, vibration, thermal and structural analyses.",browser:"Text input decks can be inspected, while binary results need solver-specific tooling.",level:"Mission-specific",tags:["engineering","simulation"]},
-          {ext:".mat / .m / .py / .ipynb",name:"Numerical analysis assets",family:"Scientific computing",kind:"file",agency:"Research labs and aerospace analysis teams",use:"Matrices, analysis scripts and reproducible computational notebooks.",browser:"Text formats can be inspected; MAT structures and notebooks need format-aware readers.",level:"Partial browser support",tags:["engineering","computing"]},
-          {ext:".zip / .tar / .gz / .bz2",name:"Archive and compression containers",family:"Distribution & packaging",kind:"container",agency:"All data archives",use:"Bundles and compressed files used to distribute datasets and mission products.",browser:"ZIP listing can be inspected with a ZIP library; TAR/GZIP/BZIP2 need specific decoders. Never infer internal validity from the outer extension.",level:"Container inspection",tags:["archive","compression"]},
-          {ext:".csv / .tsv / .txt",name:"Delimited and plain-text data",family:"Universal science tables",kind:"file",agency:"All agencies and science disciplines",use:"Exported tables, indexes, ancillary observations, quality reports and derived science data.",browser:"Syntax and tabular shape checks can run in-browser; scientific meaning needs metadata.",level:"Browser validation",tags:["text","tables"]},
-          {ext:".json / .ndjson / .yaml / .yml",name:"Structured metadata & record streams",family:"Metadata & scientific pipelines",kind:"file",agency:"Modern science platforms and data services",use:"Catalog records, metadata, processing manifests, and line-delimited observations.",browser:"JSON parsing can be checked in-browser; YAML needs a parser and schema for semantic validation.",level:"Browser validation",tags:["metadata","text"]}
-        ];
-        function spaceTemplate() {
-          return '<div class="page-head"><div><div class="eyebrow">INTERNATIONAL SPACE DATA</div><h1 class="page-title">Space & aerospace<span style="color:var(--orange)">.</span></h1><p class="page-subtitle">A cross-agency catalogue of the science, satellite imagery, planetary, telemetry, navigation and engineering formats used across space programmes. Local files stay in this browser unless you explicitly use another service.</p></div></div>' +
-            '<div class="grid kpi-grid"><div class="panel kpi"><div class="kpi-label">FORMAT ENTRIES</div><div class="kpi-value">' + SPACE_FORMATS.length + '</div><div class="kpi-foot">Grouped aliases and standards</div></div><div class="panel kpi"><div class="kpi-label">CATEGORIES</div><div class="kpi-value">8</div><div class="kpi-foot">Science to engineering</div></div><div class="panel kpi"><div class="kpi-label">VALIDATION MODEL</div><div class="kpi-value">Layered</div><div class="kpi-foot">Signature → structure → semantics</div></div></div>' +
-            '<section class="panel workspace-panel"><div class="panel-head"><div><h2 class="panel-title">Inspect a local file</h2><div class="panel-sub">Basic local checks only; no file is transmitted by this tool.</div></div><span class="tag">BROWSER LOCAL</span></div><div class="panel-body"><div class="dropzone" id="spaceDropzone"><div class="drop-icon">✦</div><h3>Choose a space-science file</h3><p>Inspect file size, declared extension, common signatures and safe metadata clues. This is not a substitute for an official validator.</p><input id="spaceFileInput" type="file" style="display:none" /><button class="btn orange" data-action="space-choose">Choose file</button><span class="upload-types">FITS · CDF · NetCDF · HDF · GeoTIFF · JP2 · PDS labels · SPICE · telemetry · engineering</span></div><div id="spaceFileResult" aria-live="polite"></div><p class="hint">Large scientific formats such as HDF5, NetCDF, PDS packages and SPICE kernels need specialized readers for full validation. This first-pass inspector deliberately avoids claiming deep compliance when it only checks a signature.</p></div></section>' +
-            '<div class="section-head"><div><h2>Explore the catalogue</h2><p>Search by extension, mission family, agency, scientific domain or use case.</p></div></div><div class="panel workspace-panel"><div class="controls"><div class="field" style="flex:2;min-width:210px"><label for="spaceSearch">Search formats</label><input id="spaceSearch" placeholder="e.g. FITS, Sentinel, telemetry, Mars, SPICE…" /></div><div class="field" style="min-width:180px"><label for="spaceCategory">Discipline</label><select id="spaceCategory"><option value="">All disciplines</option>' + Array.from(new Set(SPACE_FORMATS.map(x=>x.family))).sort().map(x=>'<option>'+esc(x)+'</option>').join('') + '</select></div><div class="field" style="min-width:150px"><label for="spaceKind">Entry type</label><select id="spaceKind"><option value="">All entry types</option><option value="file">File format</option><option value="package">Package / data model</option><option value="standard">Protocol / standard</option><option value="container">Archive / container</option></select></div></div><div id="spaceFormatResults"></div></div>' +
-            '<div class="section-head"><div><h2>Validation levels</h2><p>Tell users precisely what the browser has and has not proven.</p></div></div><div class="grid two-col"><div class="panel workspace-panel"><strong>Level 1 · Identification</strong><p class="hint">Extension and file-signature clues. Helpful for detecting obvious mismatches, but not proof of integrity.</p></div><div class="panel workspace-panel"><strong>Level 2 · Structure</strong><p class="hint">Parse headers, XML/JSON labels, archive members, checksums and internal record boundaries with a dedicated parser.</p></div><div class="panel workspace-panel"><strong>Level 3 · Standard compliance</strong><p class="hint">Run the official versioned validator or library. For example, FITSverify for FITS and PDS tools for PDS products.</p></div><div class="panel workspace-panel"><strong>Level 4 · Scientific validity</strong><p class="hint">Check mission labels, calibration, coordinate systems, time bases, units, processing level and data-quality rules.</p></div></div>' +
-            '<div class="section-head"><div><h2>Standards & official references</h2><p>Useful starting points; formats and profiles can differ by mission.</p></div></div><div class="panel workspace-panel"><ul class="insight-list"><li><a href="https://science.data.nasa.gov/fits/documentation/standard" target="_blank" rel="noopener">NASA FITS Standard</a> — astronomical scientific data.</li><li><a href="https://pds.nasa.gov/datastandards/about/" target="_blank" rel="noopener">NASA Planetary Data System</a> — PDS3 / PDS4 archive rules.</li><li><a href="https://darts.isas.jaxa.jp/en/faq" target="_blank" rel="noopener">JAXA DARTS format FAQ</a> — FITS, CDF, NetCDF, SPICE and PDS.</li><li><a href="https://sentiwiki.copernicus.eu/web/safe-format" target="_blank" rel="noopener">Copernicus Sentinel SAFE</a> — ESA Earth-observation packaging.</li><li><a href="https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/kernel.html" target="_blank" rel="noopener">NASA NAIF SPICE kernels</a> — kernel types and file identification.</li><li><a href="https://noaasis.noaa.gov/GOES/HRIT/products.html" target="_blank" rel="noopener">NOAA GOES HRIT products</a> — native NetCDF and broadcast formats.</li><li><a href="https://www.nssdc.ac.cn/nssdc_zh/html/index.html" target="_blank" rel="noopener">China National Space Science Data Center</a> — space-science resources and national standards.</li></ul></div>';
-        }
-        function renderSpaceFormats() {
-          const query = ($("#spaceSearch")?.value || "").trim().toLowerCase();
-          const category = $("#spaceCategory")?.value || "";
-          const kind = $("#spaceKind")?.value || "";
-          const found = SPACE_FORMATS.filter(f => (!category || f.family===category) && (!kind || f.kind===kind) && (!query || [f.ext,f.name,f.family,f.agency,f.use,f.browser,f.level,...f.tags].join(" ").toLowerCase().includes(query)));
-          const host = $("#spaceFormatResults");
-          if (!host) return;
-          host.innerHTML = '<div class="panel-sub" style="margin:14px 0 8px">' + found.length + ' matching entries</div>' +
-            (found.length ? found.map((f,i)=>'<details class="result-box" style="margin-bottom:9px"><summary style="cursor:pointer;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><strong style="min-width:140px">'+esc(f.ext)+'</strong><span>'+esc(f.name)+'</span><span class="tag" style="margin-left:auto">'+esc(f.level)+'</span></summary><div class="hint" style="margin-top:12px"><b>Discipline:</b> '+esc(f.family)+'<br><b>Agency / ecosystem:</b> '+esc(f.agency)+'<br><b>Purpose:</b> '+esc(f.use)+'<br><b>Browser support:</b> '+esc(f.browser)+'</div></details>').join('') : '<div class="empty">No matching formats. Try a shorter search term or another discipline.</div>');
-        }
-        async function inspectSpaceFile(file) {
-          const host = $("#spaceFileResult");
-          if (!host || !file) return;
-          const ext = (file.name.match(/\.([^.]+)$/)?.[1] || "").toLowerCase();
-          const displaySize = file.size < 1024*1024 ? (file.size/1024).toFixed(1)+" KB" : (file.size/1024/1024).toFixed(2)+" MB";
-          host.innerHTML = '<div class="notice blue" style="margin-top:15px">Inspecting '+esc(file.name)+'…</div>';
-          let sig = "Not checked";
-          const head = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
-          const ascii = (a) => Array.from(a).map(c => c >= 32 && c < 127 ? String.fromCharCode(c) : " ").join("");
-          const bytes = Array.from(head.slice(0,16)).map(n=>n.toString(16).padStart(2,"0")).join(" ");
-          const textHead = ascii(head.slice(0,512)).trim();
-          const starts = (...b) => b.every((v,i)=>head[i]===v);
-          let detected = "Unknown / mission-specific";
-          if (head.length >= 6 && ascii(head.slice(0,6)) === "SIMPLE") detected = "FITS-like header";
-          else if (starts(0x89,0x48,0x44,0x46,0x0d,0x0a,0x1a,0x0a)) detected = "HDF5 signature";
-          else if (starts(0x50,0x4b,0x03,0x04) || starts(0x50,0x4b,0x05,0x06)) detected = "ZIP container (could include KMZ or a product package)";
-          else if (head.length >= 4 && head[0]===0x49 && head[1]===0x49 && head[2]===0x2a && head[3]===0x00 || head.length >= 4 && head[0]===0x4d && head[1]===0x4d && head[2]===0x00 && head[3]===0x2a) detected = "TIFF-like header (GeoTIFF tags not yet checked)";
-          else if (starts(0xff,0x4f,0xff,0x51)) detected = "JPEG 2000 codestream";
-          else if (textHead.startsWith("CDF")) detected = "CDF-like header";
-          else if (textHead.startsWith("CCSDS")) detected = "CCSDS-labelled text or packet dump";
-          else if (textHead.startsWith("<?xml") || textHead.startsWith("<")) detected = "XML-like text";
-          else if (textHead.startsWith("{") || textHead.startsWith("[")) detected = "JSON-like text";
-          else if (starts(0x1f,0x8b)) detected = "GZIP container";
-          else if (textHead.startsWith("DAF/SPK") || textHead.startsWith("KPL/")) detected = "SPICE kernel signature";
-          else if (textHead.startsWith("PDS_VERSION_ID") || textHead.includes("PDS4")) detected = "Planetary data label clue";
-          if (ext==="fits" || ext==="fit" || ext==="fts") {
-            sig = detected==="FITS-like header" ? "The first block resembles a FITS header; full FITS block/header/data validation not performed." : "Extension suggests FITS, but expected SIMPLE signature was not detected at byte 0. Could be non-standard, wrapped or invalid.";
-          } else if (ext==="h5" || ext==="hdf5") {
-            sig = detected==="HDF5 signature" ? "HDF5 magic signature found; dataset structure and integrity not verified." : "Expected HDF5 signature not detected at byte 0.";
-          } else if (ext==="tif" || ext==="tiff") {
-            sig = detected.startsWith("TIFF-like") ? "TIFF byte-order and magic detected; GeoTIFF georeferencing tags not checked." : "Expected TIFF header not detected.";
-          } else if (["xml","lbl"].includes(ext)) sig = detected.includes("XML") || detected==="Planetary data label clue" ? "Text resembles a label/XML document; schema and product references not checked." : "No obvious XML/PDS label signature detected.";
-          else if (ext==="json" || ext==="geojson") { try { JSON.parse(await file.text()); sig="Valid JSON syntax; GeoJSON schema and coordinate semantics not checked."; } catch (_) { sig="Invalid JSON syntax or unsupported encoding."; } }
-          else if (ext==="bsp" || ext==="bc" || ext==="bpc" || ext==="bds" || ext==="dsk") sig= detected==="SPICE kernel signature" ? "SPICE-like signature detected; use SPICE Toolkit for semantic and integrity checks." : "SPICE signature was not recognized by this simple text-prefix check; binary kernels may need binary identifier inspection.";
-          else if (ext==="safe") sig="SAFE is usually a product directory/package, not a standalone data file. Select its ZIP/package or inspect manifest.safe inside the product folder.";
-          else if (ext==="cdf") sig = detected==="CDF-like header" ? "CDF-like signature clue detected; complete CDF validation requires CDF tools." : "Header signature not recognized by basic inspector; complete CDF validation requires CDF tools.";
-          else if (ext==="nc" || ext==="nc4") { sig="NetCDF classic/NetCDF4 structure not parsed. A reader such as netCDF-C or a compatible WASM build is needed."; }
-          host.innerHTML = '<div class="panel workspace-panel" style="margin-top:14px"><div class="panel-head"><div><h2 class="panel-title">'+esc(file.name)+'</h2><div class="panel-sub">'+esc(displaySize)+' · '+esc(file.type || "MIME type not provided")+'</div></div><span class="tag">'+esc(detected)+'</span></div><div class="panel-body"><div class="hint"><b>Extension:</b> .'+esc(ext||"(none)")+'<br><b>Signature clues:</b> '+esc(bytes||"Empty file")+'<br><b>Initial check:</b> '+esc(sig)+'</div><div class="notice" style="margin-top:13px"><b>Limitations:</b> This is a lightweight signature and syntax inspector. It does not certify standards compliance, calibration, completeness, or scientific correctness.</div><button class="btn small" id="spaceClearFile" style="margin-top:6px">Clear result</button></div></div>';
-          $("#spaceClearFile")?.addEventListener("click",()=>{host.innerHTML="";});
         }
         function importTemplate() {
           return (
@@ -4935,7 +4830,6 @@
             report: reportTemplate,
             learning: learningTemplate,
             connections: connectionsTemplate,
-            space: spaceTemplate,
           };
           try {
             c.innerHTML = (views[activeView] || overviewTemplate)();
@@ -4972,7 +4866,6 @@
             b.classList.toggle("active", b.dataset.view === activeView),
           );
           if (activeView === "import") attachDropzone();
-          if (activeView === "space") renderSpaceFormats();
         }
         // In engine mode each view first asks the engine for the few numbers it
         // shows, then draws. Clicking another tab while waiting simply wins.
@@ -6196,9 +6089,6 @@
             try {
               if (await pipelineAction(act, actEl)) return;
               switch (act) {
-                case "space-choose":
-                  $("#spaceFileInput")?.click();
-                  break;
                 case "choose-file":
                   $("#fileInput").click();
                   break;
@@ -6425,20 +6315,6 @@
             if (id === "streamSource" || id === "streamQuery") {
               if (PIPE.draft) PIPE.draft = { ...PIPE.draft, ...readStreamEditor() };
               loadStreamColumns();
-            }
-          });
-          document.addEventListener("input", (e) => {
-            if (e.target.id === "spaceSearch") renderSpaceFormats();
-          });
-          document.addEventListener("change", (e) => {
-            if (e.target.id === "spaceCategory" || e.target.id === "spaceKind") renderSpaceFormats();
-            if (e.target.id === "spaceFileInput") {
-              const f = e.target.files && e.target.files[0];
-              if (f) inspectSpaceFile(f).catch(err => {
-                const h = $("#spaceFileResult");
-                if (h) h.innerHTML = '<div class="notice"><b>Inspection failed:</b> ' + esc(err.message || String(err)) + '</div>';
-              });
-              e.target.value = "";
             }
           });
           $("#fileInput").addEventListener("change", (e) => {
