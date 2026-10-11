@@ -97,7 +97,7 @@ def main() -> int:
                     try:
                         with urllib.request.urlopen(candidate, timeout=0.5) as response:
                             html = response.read().decode("utf-8", "replace")
-                        match = re.search(r"window\\.REDATA_ENGINE=(\\{.*?\\});</script>", html)
+                        match = re.search(r"window\.REDATA_ENGINE=(\{.*?\});</script>", html)
                         if match:
                             config = json.loads(match.group(1))
                             base_url, token = candidate.rstrip("/"), config["token"]
