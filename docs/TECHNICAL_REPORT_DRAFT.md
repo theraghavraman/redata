@@ -29,7 +29,11 @@ The README also documents data import, data exploration, profiling and quality i
 
 These are repository-documented capabilities, not independent verification. Before publication, the tested source version and each evaluated feature must be confirmed against code and test results.
 
-## 3. Research questions
+## 3. Claims and evidence discipline
+
+The companion [Claims and Evidence Register](CLAIMS_AND_EVIDENCE.md) records the current documentation-level status of major project claims and the evidence required to strengthen them. It distinguishes repository-described scope from implementation-level verification, measured findings, and independent reproduction. The register is not itself evidence that a feature passes tests; it is a guard against treating intended behavior or prior README figures as established results.
+
+## 4. Research questions
 
 **RQ1 — Analytical correctness:** Do supported ingestion, transformation, SQL, and statistical operations produce results consistent with independent reference calculations?
 
@@ -41,7 +45,7 @@ These are repository-documented capabilities, not independent verification. Befo
 
 **RQ5 — Reproducibility:** Can another person reproduce the reported results using the recorded source version, environment, data, and commands?
 
-## 4. Evaluation design
+## 5. Evaluation design
 
 ### 4.1 Record the environment
 
@@ -90,7 +94,7 @@ Define latency boundaries precisely. For example, distinguish file reading, pars
 
 A failed run is a result. Record the input, configuration, observed failure, error message, and whether a retry changed the outcome. Do not omit failures from summaries or report unsupported workloads as successful.
 
-## 5. Results
+## 6. Results
 
 **Status: Pending execution and verification.**
 
@@ -106,7 +110,7 @@ A failed run is a result. Record the input, configuration, observed failure, err
 
 These statuses do not mean a feature fails or succeeds; they mean that this report does not yet contain independently reproducible evidence for the relevant claim.
 
-## 6. Known limitations and threats to validity
+## 7. Known limitations and threats to validity
 
 Performance depends on hardware, browser behavior, data shape, memory availability, caching, dependency versions, and workload design. A small set of workloads cannot establish universal scalability. Results from synthetic data may not generalize to real-world data.
 
@@ -114,7 +118,7 @@ Statistical functions must be evaluated against their assumptions and reference 
 
 The repository README contains performance figures and capacity descriptions. They are treated here as existing documentation claims, not as measurements independently reproduced by this report. Any such figures included in a final version must be traced to a specific source revision, test setup, and raw results.
 
-## 7. Reproducibility package
+## 8. Reproducibility package
 
 Before the report is treated as a completed evaluation, publish or link:
 
@@ -129,7 +133,7 @@ Before the report is treated as a completed evaluation, publish or link:
 
 Record all changes to the protocol and explain deviations from the planned method.
 
-## 8. Conclusion
+## 9. Conclusion
 
 This draft establishes a testable scope for documenting and evaluating ReData. No new performance, scalability, correctness, or independent-validation conclusions are made at this stage. Those conclusions remain pending execution of the protocol and review of the resulting evidence.
 
