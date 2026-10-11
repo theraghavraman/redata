@@ -121,7 +121,7 @@ These are external providers; ReData is independent and is not affiliated with o
 - [Google Data Analytics Professional Certificate](https://www.coursera.org/professional-certificates/google-data-analytics)
 - [Google Advanced Data Analytics Professional Certificate](https://www.coursera.org/professional-certificates/google-advanced-data-analytics)
 - [Meta Marketing Analytics Professional Certificate](https://www.coursera.org/professional-certificates/facebook-marketing-analytics)
-- [Microsoft Power BI Data Analyst](https://learn.microsoft.com/en-us/credentials/certifications/power-bi-data-analyst/)
+- [Microsoft Power BI Data Analyst](https://learn.microsoft.com/en-us/credentials/certifications/power-bi-data-analyst-associate/)
 - [Microsoft Learn](https://learn.microsoft.com/en-us/training/)
 
 ## Design direction

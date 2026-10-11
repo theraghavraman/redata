@@ -1307,7 +1307,7 @@
     <input
       id="fileInput"
       type="file"
-      accept=".csv,.tsv,.txt,.json,.ndjson,.jsonl,.xlsx,.xls,.fits,.fit,.fts,.cdf,.nc,.nc4,.hdf,.h4,.h5,.hdf5,.tif,.tiff,.jp2,.grib,.grb,.grb2,.xml,.lbl,.img,.tab,.bsp,.bc,.bpc,.tpc,.tf,.ti,.tls,.tsc,.tm,.dsk,.bds,.bin,.raw,.tlm,.pkt,.step,.stp,.iges,.igs,.stl,.vtk,.vtu,.vtp,.zarr,.parquet,.zip,.tar,.gz,.bz2
+      accept=".csv,.tsv,.txt,.json,.ndjson,.jsonl,.xlsx,.xls"
       hidden
     />
     <script>
@@ -1649,6 +1649,10 @@
         const ENGINE = window.REDATA_ENGINE || null;
         const BROWSER_ROW_LIMIT = 1000000;
         const BROWSER_FILE_LIMIT = 300 * 1024 * 1024;
+        // Text formats are parsed on the main thread, so they get a tighter limit than Excel (which runs in a worker).
+        const BROWSER_TEXT_LIMIT = 100 * 1024 * 1024;
+        const PREVIEW_CHARS = 1000000;
+        const TABULAR_EXTS = ["csv", "tsv", "txt", "json", "ndjson", "jsonl", "xlsx", "xls"];
         const PAGE_SIZE = 150;
         let engineActive = false,
           E = { meta: null, v: {} },
@@ -2671,7 +2675,7 @@
                 ) +
                 '<button class="btn" data-action="import-path">Load from path</button></div>'
               : "") +
-            '<div class="section-head"><div><h2>Import options</h2><p>These settings apply to the next file you select.</p></div></div><div class="grid two-col" style="margin-bottom:18px"><div class="field"><label for="importHeaderMode">First row contains</label><select id="importHeaderMode"><option value="header">Column headers</option><option value="no-header">Data (no header row)</option></select></div><div class="field"><label for="importSheet">Excel worksheet</label><select id="importSheet" disabled><option value="0">First worksheet (default)</option></select><div class="hint">Available worksheets appear after selecting an Excel file.</div></div></div><div id="headerEditor" hidden></div><div id="importProgress" class="notice blue" hidden role="status" aria-live="polite"></div><div class="section-head"><div><h2>After import</h2><p>Keep the analysis traceable and the source untouched.</p></div></div><div class="grid two-col"><div class="result-box"><strong>01 · Parse</strong><div class="hint" style="margin-top:6px">Read and normalize the file without changing the source.</div></div><div class="result-box"><strong>02 · Inspect</strong><div class="hint" style="margin-top:6px">Review column types, missing values, duplicates and distributions.</div></div><div class="result-box"><strong>03 · Analyse</strong><div class="hint" style="margin-top:6px">Explore with tables, charts, SQL and statistics.</div></div><div class="result-box"><strong>04 · Export</strong><div class="hint" style="margin-top:6px">Download transformed rows or an analysis brief.</div></div></div></div>'
+            '<div class="section-head"><div><h2>Import options</h2><p>These settings apply to the next file you select.</p></div></div><div class="grid two-col" style="margin-bottom:18px"><div class="field"><label for="importHeaderMode">First row contains</label><select id="importHeaderMode"><option value="header">Column headers</option><option value="no-header">Data (no header row)</option></select></div><div class="field"><label for="importEncoding">Text encoding (CSV / TSV / TXT)</label><select id="importEncoding"><option value="auto">Auto-detect (UTF-8, else Windows-1252)</option><option value="utf-8">UTF-8</option><option value="windows-1252">Windows-1252</option><option value="iso-8859-1">ISO-8859-1</option></select><div class="hint">Change this if accented text looks garbled. JSON is always UTF-8.</div></div><div class="field"><label for="importSheet">Excel worksheet</label><select id="importSheet" disabled><option value="0">First worksheet (default)</option></select><div class="hint">Available worksheets appear after selecting an Excel file.</div></div></div><div id="headerEditor" hidden></div><div id="importProgress" class="notice blue" hidden role="status" aria-live="polite"></div><div class="section-head"><div><h2>After import</h2><p>Keep the analysis traceable and the source untouched.</p></div></div><div class="grid two-col"><div class="result-box"><strong>01 · Parse</strong><div class="hint" style="margin-top:6px">Read and normalize the file without changing the source.</div></div><div class="result-box"><strong>02 · Inspect</strong><div class="hint" style="margin-top:6px">Review column types, missing values, duplicates and distributions.</div></div><div class="result-box"><strong>03 · Analyse</strong><div class="hint" style="margin-top:6px">Explore with tables, charts, SQL and statistics.</div></div><div class="result-box"><strong>04 · Export</strong><div class="hint" style="margin-top:6px">Download transformed rows or an analysis brief.</div></div></div></div>'
           );
         }
         function statisticsRows() {
@@ -5426,9 +5430,61 @@
             }
           });
         }
+        let pendingImportEncoding = "auto";
+        // Decode a text file. Auto mode tries strict UTF-8 first and falls back to Windows-1252
+        // (what Excel writes for "CSV" on Windows), so accented text is not shown as garbage.
+        async function decodeText(file, encoding) {
+          const buf = await file.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let label = encoding || "auto";
+          let start = 0;
+          if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+            start = 3;
+            if (label === "auto") label = "utf-8";
+          } else if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+            start = 2;
+            label = "utf-16le";
+          } else if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+            start = 2;
+            label = "utf-16be";
+          }
+          if (!label.startsWith("utf-16")) {
+            const n = Math.min(bytes.length, 8192);
+            for (let i = 0; i < n; i++)
+              if (bytes[i] === 0)
+                throw Error(
+                  file.name +
+                    " looks like a binary file, not a text table. Use the Space formats explorer to inspect it, or export it to CSV first.",
+                );
+          }
+          const body = start ? bytes.subarray(start) : bytes;
+          if (label === "auto") {
+            try {
+              return new TextDecoder("utf-8", { fatal: true }).decode(body);
+            } catch (_) {
+              return new TextDecoder("windows-1252").decode(body);
+            }
+          }
+          return new TextDecoder(label).decode(body);
+        }
+        // Only parse the start of a big delimited file for the preview; the full parse happens on Import.
+        function previewSlice(text) {
+          if (text.length <= PREVIEW_CHARS) return text;
+          const cut = text.lastIndexOf("\n", PREVIEW_CHARS);
+          return text.slice(0, cut > 0 ? cut : PREVIEW_CHARS);
+        }
         async function readFile(file) {
           if (ENGINE) return engineReadFile(file);
           try {
+            const fileExt = file.name.split(".").pop().toLowerCase();
+            if (!TABULAR_EXTS.includes(fileExt))
+              throw Error(
+                "." + fileExt + " is not a table format ReData can import (supported: CSV, TSV, TXT, JSON, NDJSON, XLSX, XLS). To check science or aerospace files, use the Space formats explorer.",
+              );
+            if (!["xlsx", "xls"].includes(fileExt) && file.size > BROWSER_TEXT_LIMIT)
+              throw Error(
+                file.name + " is " + fmtBytes(file.size) + ", too large to parse as text in a browser tab (limit " + fmtBytes(BROWSER_TEXT_LIMIT) + "). Start the ReData local engine, or split the file.",
+              );
             if (file.size > BROWSER_FILE_LIMIT)
               throw Error(
                 file.name +
@@ -5466,7 +5522,10 @@
                 "Excel parsed in the background. Review column names, then import. UI stays responsive during parsing.",
               );
             } else {
-              const text = await file.text();
+              pendingImportEncoding = $("#importEncoding")?.value || "auto";
+              setImportProgress("Reading " + file.name + "…");
+              await yieldToBrowser();
+              const text = await decodeText(file, pendingImportEncoding);
               let rawRows;
               if (ext === "json") {
                 let obj = JSON.parse(text);
@@ -5494,21 +5553,22 @@
                 $("#importProgress").hidden = true;
                 return;
               } else {
+                const ptext = previewSlice(text);
                 const delimiter =
                   ext === "tsv"
                     ? "\t"
-                    : text.split(/\r?\n/, 5).join("\n").split("\t").length >
-                        text.split(/\r?\n/, 5).join("\n").split(",").length
+                    : ptext.split(/\r?\n/, 5).join("\n").split("\t").length >
+                        ptext.split(/\r?\n/, 5).join("\n").split(",").length
                       ? "\t"
                       : ",";
                 const parsed = [];
                 let row = [],
                   v = "",
                   quoted = false;
-                for (let i = 0; i < text.length; i++) {
-                  const ch = text[i];
+                for (let i = 0; i < ptext.length; i++) {
+                  const ch = ptext[i];
                   if (quoted) {
-                    if (ch === '"' && text[i + 1] === '"') {
+                    if (ch === '"' && ptext[i + 1] === '"') {
                       v += '"';
                       i++;
                     } else if (ch === '"') quoted = false;
@@ -5562,7 +5622,9 @@
               file.name + " · " + pendingImportBook.SheetNames[index],
             );
           } else if (["csv", "tsv", "txt"].includes(ext)) {
-            const text = await file.text(),
+            setImportProgress("Parsing " + file.name + "… large files can take a few seconds.");
+            await yieldToBrowser();
+            const text = await decodeText(file, pendingImportEncoding),
               delimiter =
                 ext === "tsv"
                   ? "\t"
