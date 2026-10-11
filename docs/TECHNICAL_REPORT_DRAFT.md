@@ -47,7 +47,7 @@ The companion [Claims and Evidence Register](CLAIMS_AND_EVIDENCE.md) records the
 
 ## 5. Evaluation design
 
-### 4.1 Record the environment
+### 5.1 Record the environment
 
 For every run, record:
 
@@ -62,13 +62,13 @@ For every run, record:
 
 Do not combine results from materially different environments without labeling the differences.
 
-### 4.2 Dataset design
+### 5.2 Dataset design
 
 Use synthetic datasets to control row count, column count, data types, missingness, duplicate rate, and cardinality. Use only data that is licensed for reuse and safe to publish. Do not commit private, confidential, or personally identifiable data.
 
 Preserve the data-generation script, seed, and dataset checksum where practical so the input can be recreated and identified.
 
-### 4.3 Workloads
+### 5.3 Workloads
 
 Evaluate only operations confirmed to exist in the tested source version:
 
@@ -84,13 +84,13 @@ Evaluate only operations confirmed to exist in the tested source version:
 
 For each workload, define expected outputs and compare them with an independent reference implementation or hand-verified small fixture.
 
-### 4.4 Measurements
+### 5.4 Measurements
 
 Record wall-clock duration, peak memory where a reliable measurement is available, output correctness, warnings, errors, timeouts, and crashes. Repeat timed operations and report the number of runs and a suitable summary such as median and range. Keep raw observations rather than recording only an average.
 
 Define latency boundaries precisely. For example, distinguish file reading, parsing, profiling, query execution, rendering, and export instead of combining them into a single number.
 
-### 4.5 Failure reporting
+### 5.5 Failure reporting
 
 A failed run is a result. Record the input, configuration, observed failure, error message, and whether a retry changed the outcome. Do not omit failures from summaries or report unsupported workloads as successful.
 
@@ -140,6 +140,8 @@ This draft establishes a testable scope for documenting and evaluating ReData. N
 ## Change history
 
 - Initial draft: defined research questions, scope, evaluation design, evidence requirements, and unverified-result labels.
+- Claims-and-evidence register added to distinguish documentation-level claims from measured and independently reproduced findings.
+- Standard-library regression tests and a GitHub Actions workflow added for the synthetic dataset generator. These tests do not evaluate ReData application performance.
 
 
 ## Licensing and attribution
