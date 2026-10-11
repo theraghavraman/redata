@@ -48,3 +48,9 @@ These entries are a starting point, not a substitute for checking the license me
 - [ ] Check font and other asset licenses for files actually bundled with the release.
 - [ ] Verify compatibility before copying or modifying third-party source.
 - [ ] Re-run the inventory when dependency versions or runtime assets change.
+
+
+## Additional attribution details
+
+- **sql.js:** Copyright (c) 2017 sql.js authors (see the upstream AUTHORS file); MIT license. Preserve the upstream notice and license text when redistributing copies. Source: https://github.com/sql-js/sql.js/blob/master/LICENSE
+- **Google Fonts:** ReData references DM Sans, DM Mono, and Manrope through Google Fonts CSS. The actual font files served can change independently of this repository. If font files are copied into a release, retain the specific font package's OFL license and notices alongside those assets; do not treat the repository's MIT license as applying to the fonts.
