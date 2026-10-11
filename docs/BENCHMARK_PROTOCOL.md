@@ -69,3 +69,14 @@ The report can move from draft to evaluated status only when the tested version,
 - Cite the tested ReData source revision and use the repository's applicable software/documentation license notices.
 - Ensure generated datasets and benchmark artifacts are safe to publish and have compatible licenses.
 - For redistribution, review [Third-Party Notices](../THIRD_PARTY_NOTICES.md), resolve dependency versions, and audit transitive/native dependencies and bundled assets. The current inventory is not a complete SBOM.
+
+
+## Synthetic dataset generation
+
+Use the repository's standard-library generator to create repeatable CSV inputs:
+
+```bash
+python benchmarks/generate_dataset.py --output /tmp/redata-100k.csv --rows 100000 --columns 10 --seed 20261012 --cardinality 1000 --missing-rate 0.01
+```
+
+The generator emits a JSON sidecar with parameters, byte size, and SHA-256. Retain the CSV and sidecar for each run. See [benchmark assets and usage](../benchmarks/README.md). The generator creates inputs only; it does not run ReData or establish performance results.
