@@ -16,6 +16,9 @@ on:
       - "engine/**"
       - "tests/**"
       - ".github/workflows/benchmark-generator-tests.yml"
+      - "CITATION.cff"
+      - "README.md"
+      - "docs/**"
   workflow_dispatch:
 
 permissions:
