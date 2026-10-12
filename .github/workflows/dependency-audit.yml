@@ -8,10 +8,14 @@ on:
     paths:
       - "engine/requirements.txt"
       - ".github/workflows/dependency-audit.yml"
+      - "scripts/reconcile_dependency_audit.py"
+      - "docs/DEPENDENCY_AUDIT.md"
   pull_request:
     paths:
       - "engine/requirements.txt"
       - ".github/workflows/dependency-audit.yml"
+      - "scripts/reconcile_dependency_audit.py"
+      - "docs/DEPENDENCY_AUDIT.md"
 
 permissions:
   contents: read
@@ -38,6 +42,8 @@ jobs:
         run: pip-licenses --format=json --output-file=licenses-resolved.json
       - name: Generate CycloneDX SBOM
         run: cyclonedx-py environment --output-format JSON --output-file sbom.cdx.json
+      - name: Reconcile SBOM and license inventory
+        run: python scripts/reconcile_dependency_audit.py
       - name: Audit known Python package vulnerabilities
         run: pip-audit
       - name: Upload audit evidence
