@@ -2379,8 +2379,19 @@
             '</p><button class="btn" data-view="import">Replace or add a file ↗</button></div></div>'
           );
         }
+        // Browser mode pages through the in-memory rows with the same pager.
+        function browserTable() {
+          const rows = filtered();
+          if (pageOffset >= rows.length) pageOffset = 0;
+          return tableHTML(
+            rows.slice(pageOffset, pageOffset + PAGE_SIZE),
+            PAGE_SIZE,
+            rows.length,
+            pageOffset,
+          );
+        }
         function explorerTable() {
-          if (!engineActive) return tableHTML(filtered());
+          if (!engineActive) return browserTable();
           const p = E.v.page;
           if (!p)
             return '<div class="empty">Rows could not be loaded. Try again.</div>';
@@ -4989,6 +5000,26 @@
                 }
                 return;
               }
+              if (
+                !pendingImportBook &&
+                pendingImportFile &&
+                ["xlsx", "xls"].includes(pendingImportExt)
+              ) {
+                try {
+                  const idx = Number(sheet.value) || 0;
+                  const result = await parseExcelInWorker(pendingImportFile, idx);
+                  pendingImportRows = result.rows;
+                  pendingImportPreview = result.preview;
+                  $("#headerEditor").innerHTML = "";
+                  showHeaderEditor(result.preview);
+                  setImportProgress(
+                    "Worksheet “" + result.names[idx] + "” is ready. Review column names, then import.",
+                  );
+                } catch (e) {
+                  toast(e.message);
+                }
+                return;
+              }
               if (pendingImportBook) {
                 try {
                   pendingImportRows = await worksheetPreview(
@@ -5079,6 +5110,10 @@
               v = "";
             } else v += c;
           }
+          if (q)
+            throw Error(
+              "This file looks malformed: a quoted value is never closed. Fix the missing closing quote and import again.",
+            );
           if (v.length || row.length) {
             row.push(v.replace(/\r$/, ""));
             rows.push(row);
@@ -5257,7 +5292,7 @@
           }
           return rowsToObjects(raw, hasHeader, names);
         }
-        async function parseExcelInWorker(file) {
+        async function parseExcelInWorker(file, sheetIndex = 0) {
           return new Promise(async (resolve, reject) => {
             if (typeof Worker === "undefined" || typeof Blob === "undefined") {
               reject(
@@ -5268,7 +5303,7 @@
               return;
             }
             const workerSource =
-              'self.onmessage=async function(e){try{importScripts("https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js");const buf=e.data;const book=XLSX.read(buf,{type:"array",dense:true});const names=book.SheetNames;const first=book.Sheets[names[0]];if(!first||!first["!ref"])throw Error("The first worksheet is empty.");const range=XLSX.utils.decode_range(first["!ref"]);const preview=XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:range.s.r,c:range.s.c},e:{r:Math.min(range.e.r,range.s.r+19),c:range.e.c}},defval:null,raw:true,blankrows:false});const total=range.e.r-range.s.r+1;if(total>1000001)throw Error("Browser-only mode handles up to 1,000,000 rows. The selected sheet contains "+(total-1)+" rows. Start the ReData local engine to import it.");const rows=[];for(let start=range.s.r;start<=range.e.r;start+=500){const end=Math.min(range.e.r,start+499);rows.push(...XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:start,c:range.s.c},e:{r:end,c:range.e.c}},defval:null,raw:true,blankrows:false}));self.postMessage({type:"progress",rows:Math.min(rows.length,total),total:total});}self.postMessage({type:"done",names:names,preview:preview,rows:rows});}catch(err){self.postMessage({type:"error",message:err&&err.message||String(err)});}}';
+              'self.onmessage=async function(e){try{importScripts("https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js");const buf=e.data.buf;const si=e.data.sheet||0;const book=XLSX.read(buf,{type:"array",dense:true});const names=book.SheetNames;const first=book.Sheets[names[si]];if(!first||!first["!ref"])throw Error("The selected worksheet is empty.");const range=XLSX.utils.decode_range(first["!ref"]);const preview=XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:range.s.r,c:range.s.c},e:{r:Math.min(range.e.r,range.s.r+19),c:range.e.c}},defval:null,raw:true,blankrows:false});const total=range.e.r-range.s.r+1;if(total>1000001)throw Error("Browser-only mode handles up to 1,000,000 rows. The selected sheet contains "+(total-1)+" rows. Start the ReData local engine to import it.");const rows=[];for(let start=range.s.r;start<=range.e.r;start+=500){const end=Math.min(range.e.r,start+499);rows.push(...XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:start,c:range.s.c},e:{r:end,c:range.e.c}},defval:null,raw:true,blankrows:false}));self.postMessage({type:"progress",rows:Math.min(rows.length,total),total:total});}self.postMessage({type:"done",names:names,preview:preview,rows:rows});}catch(err){self.postMessage({type:"error",message:err&&err.message||String(err)});}}';
             const url = URL.createObjectURL(
               new Blob([workerSource], { type: "text/javascript" }),
             );
@@ -5309,7 +5344,7 @@
             try {
               setImportProgress("Starting background Excel parser…");
               const buffer = await file.arrayBuffer();
-              worker.postMessage(buffer, [buffer]);
+              worker.postMessage({ buf: buffer, sheet: sheetIndex }, [buffer]);
             } catch (err) {
               if (!finished) {
                 finished = true;
@@ -5318,6 +5353,17 @@
               }
             }
           });
+        }
+        // Decode as UTF-8; fall back to Windows-1252 (Latin-1) when the bytes
+        // are not valid UTF-8 so accented text is not replaced with "?".
+        async function decodeText(file) {
+          const buf = await file.arrayBuffer();
+          try {
+            return new TextDecoder("utf-8", { fatal: true }).decode(buf);
+          } catch {
+            toast("File is not UTF-8; it was read as Latin-1 (Windows-1252).");
+            return new TextDecoder("windows-1252").decode(buf);
+          }
         }
         async function readFile(file) {
           if (ENGINE) return engineReadFile(file);
@@ -5351,7 +5397,7 @@
                       '<option value="' + i + '">' + esc(n) + "</option>",
                   )
                   .join("");
-                sheetSelect.disabled = true;
+                sheetSelect.disabled = result.names.length < 2;
                 sheetSelect.value = "0";
               }
               showHeaderEditor(result.preview);
@@ -5359,7 +5405,7 @@
                 "Excel parsed in the background. Review column names, then import. UI stays responsive during parsing.",
               );
             } else {
-              const text = await file.text();
+              const text = await decodeText(file);
               let rawRows;
               if (ext === "json") {
                 let obj = JSON.parse(text);
@@ -5417,6 +5463,10 @@
                     v = "";
                   } else v += ch;
                 }
+                if (quoted)
+                  throw Error(
+                    "This file looks malformed: a quoted value is never closed. Fix the missing closing quote and import again.",
+                  );
                 if (v.length || row.length) {
                   row.push(v.replace(/\r$/, ""));
                   parsed.push(row);
@@ -5425,6 +5475,8 @@
                   r.some((c) => String(c).trim() !== ""),
                 );
               }
+              if (!rawRows || !rawRows.length)
+                throw Error("This file is empty. No rows were found to import.");
               pendingImportRows = rawRows;
               showHeaderEditor(rawRows.slice(0, 200));
               setImportProgress(
@@ -5455,7 +5507,7 @@
               file.name + " · " + pendingImportBook.SheetNames[index],
             );
           } else if (["csv", "tsv", "txt"].includes(ext)) {
-            const text = await file.text(),
+            const text = await decodeText(file),
               delimiter =
                 ext === "tsv"
                   ? "\t"
@@ -6005,10 +6057,14 @@
                 names.map(() => "?").join(",") +
                 ")",
             );
+            // One transaction for the bulk load: per-row autocommit made
+            // large datasets take close to a minute before each query.
+            sqlDb.run("BEGIN");
             try {
               data.forEach((r) =>
                 ins.run(names.map((c) => (blank(r[c]) ? null : r[c]))),
               );
+              sqlDb.run("COMMIT");
             } finally {
               ins.free();
             }
@@ -6079,7 +6135,7 @@
               if (activeView === "dataset") {
                 if (engineActive)
                   refreshTable().catch((err) => toast(err.message));
-                else $("#dataTableHost").innerHTML = tableHTML(filtered());
+                else $("#dataTableHost").innerHTML = browserTable();
               } else go("dataset");
               return;
             }
@@ -6127,7 +6183,7 @@
                   };
                   pageOffset = 0;
                   if (engineActive) await refreshTable();
-                  else $("#dataTableHost").innerHTML = tableHTML(filtered());
+                  else $("#dataTableHost").innerHTML = browserTable();
                   break;
                 case "page-first":
                 case "page-prev":
@@ -6136,7 +6192,8 @@
                     act === "page-first"
                       ? 0
                       : Math.max(0, pageOffset + (act === "page-next" ? PAGE_SIZE : -PAGE_SIZE));
-                  await refreshTable();
+                  if (engineActive) await refreshTable();
+                  else $("#dataTableHost").innerHTML = browserTable();
                   break;
                 case "apply-missing":
                   await applyMissing();
