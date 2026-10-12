@@ -10,7 +10,7 @@ ReData runs in two ways:
 | --- | --- | --- |
 | How to open | Open `index.html`, or the GitHub Pages site | Run `start-engine.bat` (Windows) or `./start-engine.sh` (macOS / Linux) |
 | Where the data is processed | Inside the browser tab | DuckDB on your own computer |
-| Practical size | Up to 10 lakh rows (1,000,000) | Crores of rows (tested with 1 crore rows / 723 MB CSV) |
+| Practical size | Up to 10 lakh rows (1,000,000) | Large files; historical 1 crore-row / 723 MB test is project-reported and not yet reproduced |
 | File types | CSV, TSV, TXT, JSON / NDJSON, XLSX / XLS | Same, plus Parquet and load-by-path |
 | Install | Nothing | Python 3.9+ (DuckDB is installed automatically on first run) |
 
