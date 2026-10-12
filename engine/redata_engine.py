@@ -534,18 +534,58 @@ class Engine:
         opts = ["header=%s" % ("true" if header else "false"), "null_padding=true"]
         if st["ext"] == "tsv":
             opts.append("delim='\\t'")
+        if st.get("parallel") is False:
+            # DuckDB's parallel CSV scanner cannot combine null_padding with
+            # quoted newlines. Set this only after preview detects that specific
+            # compatibility error, preserving parallel imports for ordinary files.
+            opts.append("parallel=false")
         if sample_size is not None:
             opts.append("sample_size=%d" % sample_size)
         if all_varchar:
             opts.append("all_varchar=true")
         return "read_csv(%s, %s)" % (self._lit(st["path"]), ", ".join(opts))
 
+    def _delimited_headers(self, st):
+        """Read original header cells before DuckDB normalizes duplicate names."""
+        try:
+            with open(st["path"], "r", encoding="utf-8-sig", newline="") as stream:
+                sample = stream.read(65536)
+                if st["ext"] == "tsv":
+                    delimiter = "\t"
+                elif st["ext"] == "csv":
+                    delimiter = ","
+                else:
+                    try:
+                        delimiter = csv.Sniffer().sniff(
+                            sample[:8192], delimiters=",\t;|"
+                        ).delimiter
+                    except csv.Error:
+                        delimiter = ","
+                stream.seek(0)
+                return next(csv.reader(stream, delimiter=delimiter), [])
+        except (OSError, UnicodeError, csv.Error):
+            # Preserve DuckDB's normal fallback for unusual encodings/dialects.
+            return None
+
     @staticmethod
     def _lit(s):
         return "'" + str(s).replace("'", "''") + "'"
 
     def _csv_preview(self, st):
-        rows = self.q("SELECT * FROM %s LIMIT %d" % (self._csv_source(st, False, all_varchar=True), PREVIEW_ROWS))
+        sql = "SELECT * FROM %s LIMIT %d" % (
+            self._csv_source(st, False, all_varchar=True), PREVIEW_ROWS
+        )
+        try:
+            rows = self.q(sql)
+        except duckdb.Error as exc:
+            message = str(exc).lower()
+            if "null_padding" not in message or "quoted new lines" not in message:
+                raise
+            st["parallel"] = False
+            sql = "SELECT * FROM %s LIMIT %d" % (
+                self._csv_source(st, False, all_varchar=True), PREVIEW_ROWS
+            )
+            rows = self.q(sql)
         return [[plain(v) for v in r] for r in rows]
 
     # ---- excel ----------------------------------------------------------------
@@ -622,6 +662,8 @@ class Engine:
             if st["kind"] == "delimited":
                 source = self._pick_csv_source(st, header)
                 display = st["name"]
+                if header and not names:
+                    names = self._delimited_headers(st)
             elif st["kind"] == "excel":
                 tmp_csv = self._excel_to_csv(st, int(sheet or 0))
                 fake = dict(st, path=tmp_csv, ext="csv")
