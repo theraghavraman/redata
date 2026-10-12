@@ -1,0 +1,39 @@
+name: ReData browser dependency and license audit
+
+on:
+  push:
+    paths:
+      - "index.html"
+      - "THIRD_PARTY_NOTICES.md"
+      - "scripts/audit_browser_dependencies.py"
+      - ".github/workflows/browser-dependency-audit.yml"
+  pull_request:
+    paths:
+      - "index.html"
+      - "THIRD_PARTY_NOTICES.md"
+      - "scripts/audit_browser_dependencies.py"
+      - ".github/workflows/browser-dependency-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check pinned browser versions and license notices
+        run: python scripts/audit_browser_dependencies.py
+      - name: Verify pinned CDN assets are reachable
+        run: |
+          set -e
+          curl --fail --silent --show-error --location --output /dev/null https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js
+          curl --fail --silent --show-error --location --output /dev/null https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.js
+          curl --fail --silent --show-error --location --output /dev/null https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.wasm
