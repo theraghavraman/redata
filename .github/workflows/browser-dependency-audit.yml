@@ -13,6 +13,7 @@ on:
       - "index.html"
       - "THIRD_PARTY_NOTICES.md"
       - "scripts/audit_browser_dependencies.py"
+      - "scripts/check_inline_js_syntax.py"
       - ".github/workflows/browser-dependency-audit.yml"
   workflow_dispatch:
 
