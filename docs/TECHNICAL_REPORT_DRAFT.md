@@ -96,14 +96,14 @@ A failed run is a result. Record the input, configuration, observed failure, err
 
 ## 6. Results
 
-**Status: Initial bounded CI smoke run completed; full evaluation pending.** The first successful 100,000-row local-engine HTTP smoke run is recorded below and in [GitHub Actions run 38175393938](https://github.com/theraghavraman/redata/actions/runs/38175393938); its JSON is available in that run's artifact section. This is a single hosted-runner baseline, not an independent reproduction of the historical 10-million-row README timings. The broader workload matrix, repeat runs on controlled hardware, memory measurements, and independent reproduction remain pending.
+**Status: Bounded CI smoke runs and a first correctness suite completed; full evaluation pending.** The 100,000-row baseline is recorded below and in [GitHub Actions run 38175393938](https://github.com/theraghavraman/redata/actions/runs/38175393938). Additional real-engine runs at 1 million and 10 million rows, repeated 1-million-row imports, and selected CSV/JSON/NDJSON/Parquet, formula, SQL-guard and export fixtures have since passed in CI; details and raw JSON are linked in the claims register and benchmark results directory. These are maintainer-run hosted-runner observations, not an independent reproduction of historical README timings. The full workload matrix, controlled-hardware repetitions, reliable peak-memory measurements, date/Excel and broader analytical fixtures, and independent reproduction remain pending.
 
 | Evaluation item | Status | Evidence required |
 |---|---|---|
-| Import duration by dataset size | Measured only for the 100k and 1M CI smoke workloads | Multi-run measurements at target sizes on controlled hardware |
+| Import duration by dataset size | Single CI smoke runs at 100k, 1M, 10M × 7 and 10M × 10; repeated 1M import/profile observations also recorded | Multi-run measurements at target sizes on controlled hardware and original historical inputs |
 | Peak memory | Approximate sampled engine-process RSS recorded for one 1M-row run only; not a guaranteed peak | Reliable, repeated memory measurements with a stated method on a documented target machine |
 | Query and transformation duration | SQL aggregate and page-request timings measured for the 100k and 1M smoke workloads only | Repeated measurements for representative query and transformation workloads |
-| Analytical output correctness | Basic row/column counts, ID ranges, page contents, and one independent sum oracle passed for the smoke workloads | Broader independent fixtures for every supported operation and edge cases |
+| Analytical output correctness | Smoke tests check row/column counts, ID ranges, page contents, aggregate oracle and authentication; a first correctness suite covers selected import edge cases, formulas, SQL mutation rejection and exports | Broader independent fixtures for every supported operation, browser mode, dates, Excel, cleaning, statistics and connection workflows |
 | Browser-only versus local-engine comparison | Not yet verified in this study | Equivalent supported workloads |
 | Failure and timeout boundaries | Not yet verified in this study | Recorded failures and test conditions |
 | Reproducibility by another operator | Not yet verified in this study | Reproduction log or independent review |
