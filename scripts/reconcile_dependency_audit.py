@@ -59,13 +59,13 @@ def main() -> int:
             first_lines = resolved.splitlines()[:3]
             license_text = "\n".join(first_lines).casefold()
             if "gnu lesser general public license" in license_text and "version 2.1" in license_text:
-                license_value = "LGPL-2.1-only"
+                license_value = "LGPL-2.1-or-later"
                 component["licenses"] = [{
                     "license": {"acknowledgement": "declared", "id": license_value}
                 }]
                 component.setdefault("properties", []).append({
                     "name": "redata:license:normalization",
-                    "value": "Normalized from pip-licenses full LGPL v2.1 text; verify upstream packaging metadata before redistribution."
+                    "value": "Normalized from pip-licenses full LGPL v2.1-or-later text and pymssql upstream source license; verify wheel/bundled FreeTDS notices before redistribution."
                 })
 
         if not license_value:
