@@ -15,6 +15,8 @@ on:
       - "scripts/audit_browser_dependencies.py"
       - "scripts/check_inline_js_syntax.py"
       - "docs/DEPENDENCY_AUDIT.md"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/audits/**"
   pull_request:
     paths:
       - "engine/requirements.txt"
@@ -26,6 +28,8 @@ on:
       - "scripts/audit_browser_dependencies.py"
       - "scripts/check_inline_js_syntax.py"
       - "docs/DEPENDENCY_AUDIT.md"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/audits/**"
 
 permissions:
   contents: read
