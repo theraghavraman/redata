@@ -1,6 +1,6 @@
 # ReData Claims and Evidence Register
 
-**Status:** Initial documentation audit; implementation-level verification and empirical evaluation are pending.  
+**Status:** Documentation audit plus bounded implementation-level checks; broader empirical evaluation remains pending.  
 **Audit date:** 2026-10-12  
 **Repository:** https://github.com/theraghavraman/redata  
 **Author:** Raghav Raman — ORCID https://orcid.org/0009-0006-6026-0674
@@ -16,13 +16,13 @@ This is a documentation-level review of the repository's current README and rese
 | Claim area | Current basis | Permitted wording now | Evidence required for a stronger claim |
 |---|---|---|---|
 | Product scope | README describes a browser-first analytics workspace and optional local DuckDB engine | "ReData is designed as a browser-first data analytics workspace with an optional local execution engine." | Confirm current entry points, execution paths, and supported operations against code and smoke tests |
-| Import and file formats | README lists CSV, TSV, TXT, JSON/NDJSON, XLSX/XLS and local-engine Parquet/path loading | "The README documents these import paths." | Format-by-format fixtures, malformed-input tests, row/column counts, type and date checks, and recorded results |
+| Import and file formats | README lists CSV, TSV, TXT, JSON/NDJSON, XLSX/XLS and local-engine Parquet/path loading; automated local-engine fixtures cover selected CSV, JSON/NDJSON and Parquet cases | "The README documents these import paths." | Excel fixtures, malformed-input/date cases, broader dialect coverage and browser-mode import checks |
 | Profiling, cleaning, SQL, statistics and charts | README lists these workspace features | "The project includes documented interfaces for..." | Tests comparing outputs to independent reference values, including edge cases and error behavior |
 | Database and API connections | README describes local-engine connections and scheduled sync modes | "The README documents connection and sync workflows." | Integration tests against controlled fixtures or test services; tests for pagination, incremental cursors, upserts, secrets handling, retries and failure logs |
 | Browser-only row capacity | README states a practical limit of up to 1,000,000 rows | Treat as a documented operating guideline, not a universal capacity guarantee | Pinned browser/device, datasets, repeat runs, memory observations, correctness checks and failure boundaries |
 | Local-engine large-file capacity | README reports a 10-million-row / 723 MB CSV test | Treat as a project-reported test claim until its environment, input, exact commit and raw logs are available | Re-run on a pinned commit; publish dataset checksum, environment, commands, raw timings, memory method, correctness checks and failures |
 | Performance figures | README contains historical timings; a 100,000-row CI smoke run now exercises the real local-engine HTTP API | Keep historical README figures labeled "project-reported; not independently reproduced". The 100,000-row result is an environment-specific baseline only. | Reproduce each historical workload separately and publish raw repeated observations with precise timing boundaries; scale up on controlled hardware |
-| Analytical correctness | Report's RQ1 requires independent reference comparisons; no results are recorded yet | Do not claim correctness from successful rendering or execution alone | Fixed fixtures with expected outputs, independent calculations, tolerances and explicit pass/fail results |
+| Analytical correctness | Automated tests assert explicit outputs for selected import edge cases, formulas, SQL mutation rejection, exports and dataset-preservation behavior; the smoke benchmark independently checks aggregate output and API authentication | Do not claim correctness from successful rendering or execution alone | Expand independent fixtures to statistics, cleaning, aggregation, joins/connections, dates, malformed input, and browser-only execution |
 | Comparative claims | No controlled comparison with Tableau, Power BI, or other tools is established by this report | Do not claim parity, superiority, or equivalent features | Predefined representative tasks, comparable versions/environments, clear criteria and reproducible measurements |
 | Research impact | Repository and report are public artifacts; no citation or adoption evidence is established here | Describe the project and its intended contribution, not proven impact | Verifiable external citations, independent use, review, or other attributable evidence |
 
@@ -38,6 +38,8 @@ This is a scope statement, not a claim that all listed operations have passed in
 A bounded 100,000-row smoke benchmark passed on GitHub Actions at [run 38175393938](https://github.com/theraghavraman/redata/actions/runs/38175393938), source commit `8d73fa1ac461fe4ac06affc36bfcb26905efb7ee`. The generated CSV was 10,374,347 bytes. The run measured 272.050 ms for import plus profiling, 1.066 ms median for five SQL aggregate HTTP requests, and 2.909 ms for a five-row page request. It validated row/column counts, ID range, an independent sum check, and rejection of an unauthenticated status request. Full environment and checksum details are in the technical report's Section 6.1 and the workflow's JSON artifact.
 
 A 1,000,000-row run passed at [run 38175438341](https://github.com/theraghavraman/redata/actions/runs/38175438341), with import plus profiling at 1,827.525 ms, median SQL aggregate HTTP latency at 3.249 ms across five requests, and correctness/auth checks passing. Raw observations are in [the 1M JSON result](../benchmarks/results/ci-smoke-1m-32fe7af.json). A 10,000,000-row, seven-column run also passed at [run 38175528927](https://github.com/theraghavraman/redata/actions/runs/38175528927): 719,145,429 bytes, 8,242.526 ms import plus profiling, 14.367 ms median SQL aggregate HTTP latency, and the correctness/auth checks passing. Its raw result is [here](../benchmarks/results/ci-smoke-10m-27e1126.json). This is not the same shape as the README's 10-million-row, 10-column claim; a 10M/10-column run passed at [run 38175634773](https://github.com/theraghavraman/redata/actions/runs/38175634773): 1,057,509,670-byte CSV, 12,778.942 ms import plus profiling, 23.899 ms median SQL aggregate HTTP latency, and correctness/auth checks passed. Raw JSON is [preserved here](../benchmarks/results/ci-smoke-10m-10col-efaf0aa.json). It matches the row and column counts but not the historical input or machine/timing conditions, so the historical timing claim remains unreproduced.
+
+A broader local-engine correctness suite was added and passed in [workflow run 38229508426](https://github.com/theraghavraman/redata/actions/runs/38229508426) at commit `b6afcab94255c1b69dadf31c27886575e6206382`. The suite checks selected CSV quoting and embedded newlines, blank/duplicate header normalization, null handling, mixed-type values, short rows, preservation of the previously loaded dataset after rejected input, JSON record-array and NDJSON import, Parquet import, formula output, SQL mutation rejection, and CSV/JSON export serialization. The same workflow includes a repeated 1-million-row local-engine smoke run. These tests are maintainer-run CI checks; they are not independent reproduction and do not cover every ReData operation or file format.
 
 ## Minimum evidence package for performance findings
 
@@ -58,7 +60,7 @@ Use medians and ranges for repeated timings unless a different summary is justif
 ## Publication gates
 
 - [ ] Verify the documented feature inventory against current code.
-- [ ] Add automated correctness tests for representative analytical operations.
+- [x] Add an initial automated correctness suite for selected import edge cases, formulas, SQL mutation rejection and exports (broader feature coverage remains open).
 - [ ] Run the benchmark protocol against a pinned source revision.
 - [ ] Preserve raw logs and dataset sidecars.
 - [ ] Resolve the dependency and bundled-asset license inventory for the intended release.
