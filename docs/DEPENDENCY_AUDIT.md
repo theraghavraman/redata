@@ -29,7 +29,7 @@ The reconciliation script adds SBOM components omitted by `pip-licenses` (includ
 
 ### Known pymssql normalization
 
-The audit output observed for `pymssql` included the full text of the GNU Lesser General Public License, version 2.1, in `licenses-resolved.json`, but the CycloneDX component had no `licenses` field. The reconciliation script detects that exact text pattern and records `LGPL-2.1-only` in the SBOM, with a provenance property that explicitly calls for upstream metadata verification. This is a machine-readable normalization of the license text, **not legal approval** and not confirmation of any bundled FreeTDS terms. A maintainer must verify the selected release's upstream license files and distribution obligations before release. If the text pattern changes or is absent, the script fails rather than guessing.
+The audit output observed for `pymssql` included the full text of the GNU Lesser General Public License, version 2.1, in `licenses-resolved.json`, but the CycloneDX component had no `licenses` field. The reconciliation script detects that exact text pattern and records `LGPL-2.1-or-later` in the SBOM, with a provenance property that explicitly calls for upstream metadata verification. This is a machine-readable normalization of the license text, **not legal approval** and not confirmation of any bundled FreeTDS terms. A maintainer must verify the selected release's upstream license files and distribution obligations before release. If the text pattern changes or is absent, the script fails rather than guessing.
 
 ## How to interpret results
 
