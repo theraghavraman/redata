@@ -204,5 +204,34 @@ class EngineCsvCorrectnessTests(unittest.TestCase):
         self.assertAlmostEqual(result["r"], 1.0, places=10)
 
 
+    def test_xlsx_import_preserves_tabular_values(self) -> None:
+        from openpyxl import Workbook
+
+        path = self.root / "workbook.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append(["id", "label"])
+        sheet.append([1, "alpha"])
+        sheet.append([2, "beta"])
+        workbook.save(path)
+        workbook.close()
+        stage = self.engine.stage_path(str(path))
+        meta = self.engine.load(stage["stage"], header=True)
+        self.assertEqual(meta["rows"], 2)
+        self.assertEqual(
+            self.engine.q('SELECT "id", "label" FROM "data" ORDER BY "id"'),
+            [(1, "alpha"), (2, "beta")],
+        )
+
+    def test_malformed_json_does_not_replace_loaded_dataset(self) -> None:
+        self.load_csv("before.json.csv", "id,label\n1,retained\n")
+        path = self.root / "broken.json"
+        path.write_text('{"id":1,', encoding="utf-8")
+        stage = self.engine.stage_path(str(path))
+        with self.assertRaises(UserError):
+            self.engine.load(stage["stage"], header=True)
+        self.assertEqual(self.engine.q('SELECT * FROM "data"'), [(1, "retained")])
+
+
 if __name__ == "__main__":
     unittest.main()
