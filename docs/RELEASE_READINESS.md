@@ -65,6 +65,8 @@ Official guidance:
 - [Zenodo DOI versioning](https://zenodo.org/help/versioning)
 - [GitHub citation files](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files)
 
+Use [the release-notes template](RELEASE_NOTES_TEMPLATE.md) when preparing the GitHub release description. Fill in only values verified for the exact release candidate.
+
 ## Release decision template
 
 Record this for each release candidate:
