@@ -5268,7 +5268,7 @@
               return;
             }
             const workerSource =
-              'self.onmessage=async function(e){try{importScripts("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js");const buf=e.data;const book=XLSX.read(buf,{type:"array",dense:true});const names=book.SheetNames;const first=book.Sheets[names[0]];if(!first||!first["!ref"])throw Error("The first worksheet is empty.");const range=XLSX.utils.decode_range(first["!ref"]);const preview=XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:range.s.r,c:range.s.c},e:{r:Math.min(range.e.r,range.s.r+19),c:range.e.c}},defval:null,raw:true,blankrows:false});const total=range.e.r-range.s.r+1;if(total>1000001)throw Error("Browser-only mode handles up to 1,000,000 rows. The selected sheet contains "+(total-1)+" rows. Start the ReData local engine to import it.");const rows=[];for(let start=range.s.r;start<=range.e.r;start+=500){const end=Math.min(range.e.r,start+499);rows.push(...XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:start,c:range.s.c},e:{r:end,c:range.e.c}},defval:null,raw:true,blankrows:false}));self.postMessage({type:"progress",rows:Math.min(rows.length,total),total:total});}self.postMessage({type:"done",names:names,preview:preview,rows:rows});}catch(err){self.postMessage({type:"error",message:err&&err.message||String(err)});}}';
+              'self.onmessage=async function(e){try{importScripts("https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js");const buf=e.data;const book=XLSX.read(buf,{type:"array",dense:true});const names=book.SheetNames;const first=book.Sheets[names[0]];if(!first||!first["!ref"])throw Error("The first worksheet is empty.");const range=XLSX.utils.decode_range(first["!ref"]);const preview=XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:range.s.r,c:range.s.c},e:{r:Math.min(range.e.r,range.s.r+19),c:range.e.c}},defval:null,raw:true,blankrows:false});const total=range.e.r-range.s.r+1;if(total>1000001)throw Error("Browser-only mode handles up to 1,000,000 rows. The selected sheet contains "+(total-1)+" rows. Start the ReData local engine to import it.");const rows=[];for(let start=range.s.r;start<=range.e.r;start+=500){const end=Math.min(range.e.r,start+499);rows.push(...XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:start,c:range.s.c},e:{r:end,c:range.e.c}},defval:null,raw:true,blankrows:false}));self.postMessage({type:"progress",rows:Math.min(rows.length,total),total:total});}self.postMessage({type:"done",names:names,preview:preview,rows:rows});}catch(err){self.postMessage({type:"error",message:err&&err.message||String(err)});}}';
             const url = URL.createObjectURL(
               new Blob([workerSource], { type: "text/javascript" }),
             );
@@ -5985,11 +5985,11 @@
           try {
             if (!window.initSqlJs)
               await loadScript(
-                "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js",
+                "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.js",
               );
             const SQL = await window.initSqlJs({
               locateFile: (f) =>
-                "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/" + f,
+                "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/" + f,
             });
             if (sqlDb) sqlDb.close();
             sqlDb = new SQL.Database();
