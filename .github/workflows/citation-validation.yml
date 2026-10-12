@@ -1,0 +1,30 @@
+name: Citation metadata validation
+
+on:
+  push:
+    paths:
+      - "CITATION.cff"
+      - ".github/workflows/citation-validation.yml"
+  pull_request:
+    paths:
+      - "CITATION.cff"
+      - ".github/workflows/citation-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-citation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Citation File Format validator
+        run: python -m pip install --disable-pip-version-check cffconvert
+      - name: Validate citation metadata
+        run: cffconvert --validate
