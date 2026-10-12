@@ -3,3 +3,8 @@ engine/.venv/
 engine/workspace/
 __pycache__/
 *.pyc
+
+# Local dependency-audit outputs (CI retains reviewed evidence as artifacts)
+.venv-audit/
+licenses-resolved.json
+sbom.cdx.json
