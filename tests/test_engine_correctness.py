@@ -101,5 +101,80 @@ class EngineCsvCorrectnessTests(unittest.TestCase):
         self.assertEqual(self.engine.q('SELECT * FROM "data"'), [(1, "ok")])
 
 
+    def stage_and_load(self, name: str, content: str):
+        path = self.root / name
+        path.write_text(content, encoding="utf-8")
+        stage = self.engine.stage_path(str(path))
+        return self.engine.load(stage["stage"], header=True)
+
+    def test_json_array_of_records_loads_with_expected_values(self) -> None:
+        meta = self.stage_and_load(
+            "records.json",
+            '{"rows":[{"id":1,"label":"alpha"},{"id":2,"label":"beta"}]}',
+        )
+        self.assertEqual(meta["rows"], 2)
+        self.assertEqual(
+            self.engine.q('SELECT "id", "label" FROM "data" ORDER BY "id"'),
+            [(1, "alpha"), (2, "beta")],
+        )
+
+    def test_ndjson_loads_all_records(self) -> None:
+        meta = self.stage_and_load(
+            "records.ndjson",
+            '{"id":1,"value":4}\n{"id":2,"value":9}\n{"id":3,"value":16}\n',
+        )
+        self.assertEqual(meta["rows"], 3)
+        self.assertEqual(
+            self.engine.q('SELECT sum("value"), count(*) FROM "data"'),
+            [(29, 3)],
+        )
+
+    def test_parquet_import_preserves_rows_and_types(self) -> None:
+        parquet = self.root / "records.parquet"
+        self.engine.q(
+            "COPY (SELECT * FROM (VALUES (1, 'alpha'), (2, 'beta')) "
+            "AS v(id, label)) TO ? (FORMAT PARQUET)",
+            [str(parquet)],
+        )
+        stage = self.engine.stage_path(str(parquet))
+        meta = self.engine.load(stage["stage"], header=True)
+        self.assertEqual(meta["rows"], 2)
+        self.assertEqual(
+            self.engine.q('SELECT "id", "label" FROM "data" ORDER BY "id"'),
+            [(1, "alpha"), (2, "beta")],
+        )
+
+    def test_formula_and_read_only_sql_guard(self) -> None:
+        self.load_csv("formula.csv", "id,value\n1,10\n2,20\n3,30\n")
+        result = self.engine.formula("double_value", "[value] * 2")
+        self.assertEqual(result, {"changed": 3, "rows": 3})
+        self.assertEqual(
+            self.engine.q('SELECT "double_value" FROM "data" ORDER BY "id"'),
+            [(20.0,), (40.0,), (60.0,)],
+        )
+        with self.assertRaises(UserError):
+            self.engine.sql("DROP TABLE data")
+        self.assertEqual(self.engine.row_count(), 3)
+
+    def test_csv_and_json_exports_round_trip(self) -> None:
+        self.load_csv("export.csv", "id,label\n1,alpha\n2,beta\n")
+        for fmt in ("csv", "json"):
+            result = self.engine.export("data", fmt=fmt)
+            output = Path(self.engine.exports[result["id"]])
+            self.assertTrue(output.is_file())
+            self.assertGreater(output.stat().st_size, 0)
+            if fmt == "json":
+                import json
+                parsed = json.loads(output.read_text(encoding="utf-8"))
+                self.assertEqual(parsed, [{"id": 1, "label": "alpha"}, {"id": 2, "label": "beta"}])
+            else:
+                import csv
+                with output.open("r", encoding="utf-8", newline="") as stream:
+                    self.assertEqual(list(csv.DictReader(stream)), [
+                        {"id": "1", "label": "alpha"},
+                        {"id": "2", "label": "beta"},
+                    ])
+
+
 if __name__ == "__main__":
     unittest.main()
