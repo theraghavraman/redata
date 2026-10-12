@@ -110,6 +110,7 @@ The included demonstration dataset is fictional and exists to make the interface
 - Local engine: the data goes from the page to the engine on the same computer (`127.0.0.1`) and stays there. The engine only listens on the loopback address and checks the Host header. Every request needs a random token that the engine only gives to the ReData page it serves, so other websites cannot read your data through it.
 - With Connections, the engine connects from your computer straight to the sources you configure (your database, Snowflake, S3, an API). Nothing passes through a ReData server.
 - The engine's SQL lab is read-only (SELECT, DESCRIBE, SUMMARIZE, EXPLAIN). Changes go through Clean & transform and Formula builder.
+- See [SECURITY.md](SECURITY.md) for the local-engine threat boundaries and vulnerability-reporting process.
 - Browser-only mode loads SheetJS (Excel) and SQL.js (SQL lab) from public CDNs. Google Fonts are also remote. The engine needs no internet after its first-run install.
 
 ## Important analytical limitations
