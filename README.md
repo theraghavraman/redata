@@ -145,4 +145,5 @@ ReData uses a warm, light analytics-workbench aesthetic: a persistent sidebar, c
 - Original ReData software source is licensed under the MIT License; see [LICENSE](LICENSE).
 - Original documentation and report prose under `docs/` are licensed under [CC BY 4.0](docs/LICENSE), unless a file states otherwise.
 - Third-party libraries and assets retain their own terms. See [Third-Party Notices and License Inventory](THIRD_PARTY_NOTICES.md) for the direct dependencies and browser-loaded assets identified so far.
+- [Dependency, License, and SBOM Audit](docs/DEPENDENCY_AUDIT.md) — how to reproduce the automated Python dependency audit and interpret its evidence.
 - The third-party inventory is an initial direct-dependency review, not a complete transitive-dependency SBOM. Before redistributing a packaged build, verify the exact resolved dependency versions and all bundled asset notices.
