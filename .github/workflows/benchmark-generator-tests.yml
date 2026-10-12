@@ -7,6 +7,9 @@ on:
       - "engine/**"
       - "tests/**"
       - ".github/workflows/benchmark-generator-tests.yml"
+      - "CITATION.cff"
+      - "README.md"
+      - "docs/**"
   pull_request:
     paths:
       - "benchmarks/**"
