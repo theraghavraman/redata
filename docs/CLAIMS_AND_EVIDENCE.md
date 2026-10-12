@@ -60,6 +60,7 @@ Use medians and ranges for repeated timings unless a different summary is justif
 ## Publication gates
 
 - [ ] Verify the documented feature inventory against current code.
+- [x] Add a citation-metadata validation workflow; its first run still needs a confirmed passing result.
 - [x] Add an initial automated correctness suite for selected import edge cases, formulas, SQL mutation rejection and exports (broader feature coverage remains open).
 - [ ] Run the benchmark protocol against a pinned source revision.
 - [ ] Preserve raw logs and dataset sidecars.
@@ -74,3 +75,4 @@ Use medians and ranges for repeated timings unless a different summary is justif
 - [Benchmark generator and instructions](../benchmarks/README.md)
 - [Third-party notices and license inventory](../THIRD_PARTY_NOTICES.md)
 - [Software citation metadata](../CITATION.cff)
+- [Release and DOI readiness checklist](RELEASE_READINESS.md)
