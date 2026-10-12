@@ -140,6 +140,7 @@ ReData uses a warm, light analytics-workbench aesthetic: a persistent sidebar, c
 - [Local-engine smoke benchmark](benchmarks/run_engine_smoke.py) — exercises the actual local-engine HTTP API, validates basic outputs, and records environment-specific timings.
 - [Citation metadata](CITATION.cff) — software citation details, validated by the citation-metadata CI workflow.
 - [Release and DOI readiness](docs/RELEASE_READINESS.md) — release gates, required human review, and the Zenodo archival sequence.
+- [Release notes template](docs/RELEASE_NOTES_TEMPLATE.md) — evidence-first release notes with explicit limitations and DOI placeholders.
 
 
 ## Licensing and third-party notices
