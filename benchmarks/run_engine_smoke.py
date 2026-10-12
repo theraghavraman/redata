@@ -29,13 +29,14 @@ GENERATOR = ROOT / "benchmarks" / "generate_dataset.py"
 ENGINE = ROOT / "engine" / "redata_engine.py"
 
 
-def request(url: str, token: str | None = None, body: dict | None = None, timeout: float = 30):
+def request(url: str, token: str | None = None, body: dict | None = None, timeout: float = 30, extra_headers: dict | None = None):
     data = None if body is None else json.dumps(body).encode("utf-8")
     headers = {}
     if token is not None:
         headers["X-ReData-Token"] = token
     if data is not None:
         headers["Content-Type"] = "application/json"
+    headers.update(extra_headers or {})
     req = urllib.request.Request(url, data=data, headers=headers, method="GET" if body is None else "POST")
     with urllib.request.urlopen(req, timeout=timeout) as response:
         raw = response.read()
@@ -135,6 +136,14 @@ def main() -> int:
             except urllib.error.HTTPError as exc:
                 if exc.code != 403:
                     raise AssertionError(f"Expected 403 without token, received {exc.code}") from exc
+
+            # A valid token must not bypass the Host allowlist (DNS-rebinding defense).
+            try:
+                request(base_url + "/api/status", token, extra_headers={"Host": "attacker.example"})
+                raise AssertionError("Engine unexpectedly accepted an unapproved Host header")
+            except urllib.error.HTTPError as exc:
+                if exc.code != 403:
+                    raise AssertionError(f"Expected 403 for an unapproved Host, received {exc.code}") from exc
 
             status = request(base_url + "/api/status", token)
             if "version" not in status:
