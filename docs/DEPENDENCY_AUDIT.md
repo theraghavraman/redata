@@ -6,6 +6,10 @@ ReData's dependency set includes data engines, spreadsheet readers, database dri
 
 The GitHub Actions workflow at [dependency-audit.yml](../.github/workflows/dependency-audit.yml) resolves the current Python requirements on an Ubuntu runner, generates a JSON license inventory and a CycloneDX SBOM, reconciles their package sets, and runs `pip-audit` against the installed Python environment. It runs weekly, on relevant changes, and on manual dispatch. Its artifacts are attached to the workflow run for 90 days.
 
+Browser-loaded dependencies are checked separately by [browser-dependency-audit.yml](../.github/workflows/browser-dependency-audit.yml). That workflow validates the pinned SheetJS and SQL.js CDN versions, checks the inline JavaScript syntax, verifies that the exact CDN assets are reachable, and checks that their license notices are recorded. The Python `pip-audit` result does not cover browser CDN scripts.
+
+The previous SheetJS reference (`xlsx@0.18.5`) was affected by [CVE-2023-30533](https://cdn.sheetjs.com/advisories/CVE-2023-30533) when parsing specially crafted workbooks. The current main branch uses the official SheetJS 0.20.3 build and SQL.js 1.14.2. The v0.1.0 release tag remains an immutable snapshot with the older reference; see the post-release audit record for the patch-release decision.
+
 ## Reproducing locally
 
 From the repository root, use a clean virtual environment and run:
