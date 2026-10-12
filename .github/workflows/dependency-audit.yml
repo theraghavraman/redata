@@ -7,14 +7,24 @@ on:
   push:
     paths:
       - "engine/requirements.txt"
+      - "index.html"
+      - "THIRD_PARTY_NOTICES.md"
       - ".github/workflows/dependency-audit.yml"
+      - ".github/workflows/browser-dependency-audit.yml"
       - "scripts/reconcile_dependency_audit.py"
+      - "scripts/audit_browser_dependencies.py"
+      - "scripts/check_inline_js_syntax.py"
       - "docs/DEPENDENCY_AUDIT.md"
   pull_request:
     paths:
       - "engine/requirements.txt"
+      - "index.html"
+      - "THIRD_PARTY_NOTICES.md"
       - ".github/workflows/dependency-audit.yml"
+      - ".github/workflows/browser-dependency-audit.yml"
       - "scripts/reconcile_dependency_audit.py"
+      - "scripts/audit_browser_dependencies.py"
+      - "scripts/check_inline_js_syntax.py"
       - "docs/DEPENDENCY_AUDIT.md"
 
 permissions:
