@@ -4,10 +4,14 @@ on:
   push:
     paths:
       - "CITATION.cff"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/audits/**"
       - ".github/workflows/citation-validation.yml"
   pull_request:
     paths:
       - "CITATION.cff"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/audits/**"
       - ".github/workflows/citation-validation.yml"
   workflow_dispatch:
 
