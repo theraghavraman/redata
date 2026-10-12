@@ -6,6 +6,7 @@ on:
       - "index.html"
       - "THIRD_PARTY_NOTICES.md"
       - "scripts/audit_browser_dependencies.py"
+      - "scripts/check_inline_js_syntax.py"
       - ".github/workflows/browser-dependency-audit.yml"
   pull_request:
     paths:
@@ -31,6 +32,8 @@ jobs:
           python-version: "3.12"
       - name: Check pinned browser versions and license notices
         run: python scripts/audit_browser_dependencies.py
+      - name: Validate inline JavaScript syntax
+        run: python scripts/check_inline_js_syntax.py
       - name: Verify pinned CDN assets are reachable
         run: |
           set -e
