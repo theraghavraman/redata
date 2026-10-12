@@ -49,10 +49,10 @@ This checklist deliberately distinguishes an archived software snapshot from evi
 
 ## Gate 5 — Archive a version on Zenodo
 
-These steps require the repository owner to use the Zenodo/GitHub account UI; the repository changes alone cannot enable the integration or publish a DOI.
+The repository owner confirmed in the Zenodo account UI on 2026-10-12 that `theraghavraman/redata` is enabled. The remaining archive steps still require a versioned GitHub release and verification of the resulting Zenodo record.
 
 1. Confirm the GitHub repository is public and sign in to Zenodo with the intended account.
-2. Connect GitHub to Zenodo and enable **only** `theraghavraman/redata`.
+2. [x] Connect GitHub to Zenodo and enable **only** `theraghavraman/redata` (confirmed by repository owner on 2026-10-12).
 3. Review the metadata Zenodo will derive from `CITATION.cff`; do not add `.zenodo.json` unless its metadata is intentionally maintained, because Zenodo gives it priority over `CITATION.cff`.
 4. Choose a version tag only after the release gates are complete. Do not label an unfinished draft as a completed research evaluation.
 5. Create a GitHub release with concise notes, exact version, tested commit, test/benchmark links, limitations, and license information.
