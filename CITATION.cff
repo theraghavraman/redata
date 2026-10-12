@@ -13,3 +13,10 @@ abstract: >-
 repository-code: "https://github.com/theraghavraman/redata"
 url: "https://github.com/theraghavraman/redata"
 license: MIT
+keywords:
+  - data analytics
+  - browser-based analytics
+  - data wrangling
+  - DuckDB
+  - reproducible research
+  - open-source software
