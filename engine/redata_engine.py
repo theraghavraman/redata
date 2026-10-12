@@ -701,13 +701,16 @@ class Engine:
 
     def _json_source(self, st):
         src = "read_json_auto(%s, format='auto', maximum_object_size=1073741824)" % self._lit(st["path"])
-        desc = self.q("DESCRIBE SELECT * FROM %s" % src)
-        # {"rows": [ {...}, ... ]} -> unwrap the first array of objects
-        if len(desc) >= 1:
-            lists = [(c, t) for c, t, *_ in desc if str(t).upper().startswith("STRUCT") and str(t).endswith("[]")]
-            if lists and self.q("SELECT count(*) FROM %s" % src)[0][0] == 1:
-                c = lists[0][0]
-                return "(SELECT u.* FROM (SELECT unnest(%s) AS u FROM %s))" % (qi(c), src)
+        try:
+            desc = self.q("DESCRIBE SELECT * FROM %s" % src)
+            # {"rows": [ {...}, ... ]} -> unwrap the first array of objects
+            if len(desc) >= 1:
+                lists = [(c, t) for c, t, *_ in desc if str(t).upper().startswith("STRUCT") and str(t).endswith("[]")]
+                if lists and self.q("SELECT count(*) FROM %s" % src)[0][0] == 1:
+                    c = lists[0][0]
+                    return "(SELECT u.* FROM (SELECT unnest(%s) AS u FROM %s))" % (qi(c), src)
+        except duckdb.Error as exc:
+            raise UserError("Could not read the JSON file: %s" % str(exc).split("\n")[0])
         return src
 
     def _create_from(self, sources, names):
