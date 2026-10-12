@@ -176,5 +176,33 @@ class EngineCsvCorrectnessTests(unittest.TestCase):
                     ])
 
 
+    def test_fill_missing_numeric_values_uses_expected_replacement(self) -> None:
+        self.load_csv("fill.csv", "id,value\n1,10\n2,\n3,30\n")
+        message = self.engine.clean("fill", strategy="zero")
+        self.assertIn("Filled 1 missing cells", message)
+        self.assertEqual(
+            self.engine.q('SELECT "id", "value" FROM "data" ORDER BY "id"'),
+            [(1, 10), (2, 0), (3, 30)],
+        )
+
+    def test_group_aggregation_matches_independent_expected_totals(self) -> None:
+        self.load_csv(
+            "groups.csv",
+            "category,amount\nA,10\nA,5\nB,7\nB,8\nC,1\n",
+        )
+        result = self.engine.aggregate("category", "amount", "sum", with_groups=True)
+        observed = {row["label"]: row["value"] for row in result["rows"]}
+        self.assertEqual(observed, {"A": 15.0, "B": 15.0, "C": 1.0})
+        self.assertEqual(result["groups"], 3)
+
+    def test_linear_regression_matches_exact_linear_fixture(self) -> None:
+        self.load_csv("linear.csv", "x,y\n1,3\n2,5\n3,7\n4,9\n")
+        result = self.engine.regression("x", "y")
+        self.assertEqual(result["n"], 4)
+        self.assertAlmostEqual(result["slope"], 2.0, places=10)
+        self.assertAlmostEqual(result["intercept"], 1.0, places=10)
+        self.assertAlmostEqual(result["r"], 1.0, places=10)
+
+
 if __name__ == "__main__":
     unittest.main()
