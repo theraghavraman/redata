@@ -1,5 +1,15 @@
 # ReData — Analytics Workspace
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23314956.svg)](https://doi.org/10.5281/zenodo.23314956)
+
+**Archived release:** ReData v0.1.0 — Analytics Workspace  
+**DOI:** [10.5281/zenodo.23314956](https://doi.org/10.5281/zenodo.23314956)  
+**Version record:** [Zenodo record](https://zenodo.org/records/23314956)  
+**Source repository:** [theraghavraman/redata](https://github.com/theraghavraman/redata)
+
+The DOI above identifies the archived v0.1.0 release. For citation, prefer the DOI for the exact archived version you used; use the repository link for the ongoing development version.
+
+
 **ReData is a browser-first workspace for the complete data-analysis journey:** import, inspect, profile, clean, query, summarize, visualize, test, model, and communicate.
 
 ## Open the app
