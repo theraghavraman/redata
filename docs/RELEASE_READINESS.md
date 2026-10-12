@@ -49,7 +49,7 @@ This checklist deliberately distinguishes an archived software snapshot from evi
 
 ## Gate 5 — Archive a version on Zenodo
 
-The repository owner confirmed in the Zenodo account UI on 2026-10-12 that `theraghavraman/redata` is enabled. The remaining archive steps still require a versioned GitHub release and verification of the resulting Zenodo record.
+The repository owner confirmed in the Zenodo account UI on 2026-10-12 that `theraghavraman/redata` is enabled. The v0.1.0 GitHub release already exists; for the next patch release, verify the candidate commit, create a new versioned GitHub release only after all gates pass, then verify the resulting Zenodo record.
 
 The v0.1.0 GitHub release already exists, and the owner supplied a screenshot showing DOI `10.5281/zenodo.23314956`. The record's metadata and archived file listing were not independently retrieved in this audit; inspect those directly before treating archive contents as verified. A future patch release needs its own version-specific DOI.
 
