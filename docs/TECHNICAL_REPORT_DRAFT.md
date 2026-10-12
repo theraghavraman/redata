@@ -10,7 +10,7 @@
 
 ReData is a software project intended to support data exploration and analysis through a browser-first workspace, with an optional local execution engine for workloads that may exceed browser resource constraints. The repository documentation describes data ingestion, profiling, transformation, querying, visualization, selected statistical operations, and data-source connections.
 
-This draft defines a reproducible evaluation plan for assessing analytical correctness, resource consumption, responsiveness, and behavior across supported execution modes. It does not present new experimental results. Claims about performance, scale, correctness, and compatibility must be supported by recorded tests before being stated as findings.
+This draft defines a reproducible evaluation plan for assessing analytical correctness, resource consumption, responsiveness, and behavior across supported execution modes. It includes initial maintainer-run CI smoke observations and selected correctness-fixture results, but not a full evaluation or independent reproduction. Claims about performance, scale, correctness, and compatibility must remain bounded by the recorded tests and their conditions.
 
 ## 1. Scope and motivation
 
