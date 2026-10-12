@@ -51,6 +51,8 @@
         cursor: pointer;
       }
       button:focus-visible,
+      a:focus-visible,
+      [tabindex]:focus-visible,
       input:focus-visible,
       select:focus-visible,
       textarea:focus-visible {
@@ -1298,7 +1300,7 @@
       </header>
       <div class="content" id="workspaceContent"></div>
     </main>
-    <div id="toastHost" aria-live="polite"></div>
+    <div id="toastHost" role="status" aria-live="polite"></div>
     <div id="busyHost" role="status" aria-live="polite"></div>
     <input
       id="fileInput"
@@ -1632,7 +1634,6 @@
           learning: ["✧", "#e3ebfa"],
           connections: ["⇄", "#e0eafa"],
         };
-        let sqlDb = null;
         // ------------------------------------------------------------------
         // Local engine (engine/redata_engine.py). When ReData is opened from
         // the engine, it injects window.REDATA_ENGINE and every heavy step
@@ -1810,6 +1811,44 @@
             });
           return m.num;
         }
+        // Dates: ISO-style text only (YYYY-MM-DD or YYYY/MM/DD, optional
+        // time). Numbers are never treated as dates, and ambiguous forms
+        // such as 03/04/2024 stay text.
+        const DATE_RE =
+          /^(\d{4})[-/](\d{2})[-/](\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+        function isDateText(v) {
+          if (typeof v !== "string") return false;
+          const m = DATE_RE.exec(v.trim());
+          if (!m) return false;
+          const mo = +m[2],
+            d = +m[3];
+          if (mo < 1 || mo > 12 || d < 1) return false;
+          const dim = new Date(Date.UTC(+m[1], mo, 0)).getUTCDate();
+          if (d > dim) return false;
+          if (m[4] !== undefined && (+m[4] > 23 || +m[5] > 59 || (m[6] !== undefined && +m[6] > 59)))
+            return false;
+          return true;
+        }
+        function dateCols() {
+          if (engineActive && E.meta)
+            return E.meta.columns.filter((c) => c.date).map((c) => c.name);
+          const m = cache();
+          if (!m.date) {
+            const ns = new Set(numCols());
+            m.date = cols().filter((c) => {
+              if (ns.has(c)) return false;
+              let any = false;
+              for (const r of data) {
+                const x = r[c];
+                if (blank(x)) continue;
+                if (!isDateText(x)) return false;
+                any = true;
+              }
+              return any;
+            });
+          }
+          return m.date;
+        }
         function catCols() {
           if (engineActive && E.meta)
             return E.meta.columns.filter((c) => !c.numeric).map((c) => c.name);
@@ -1903,7 +1942,7 @@
               p = {
                 name: c,
                 numeric,
-                date: /date|time/i.test(c),
+                date: !numeric && dateCols().includes(c),
                 nonEmpty: valid.length,
                 missing: n - valid.length,
                 distinctExact: true,
@@ -2255,7 +2294,9 @@
             hs
               .map(
                 (c) =>
-                  '<th data-sort="' +
+                  '<th tabindex="0" aria-sort="' +
+                  (sortBy === c ? (sortDir === 1 ? "ascending" : "descending") : "none") +
+                  '" data-sort="' +
                   esc(c) +
                   '" title="Sort by ' +
                   esc(c) +
@@ -2545,7 +2586,13 @@
           return (
             '<div class="page-head"><div><div class="eyebrow">PREPARE THE DATA</div><h1 class="page-title">Clean & transform<span style="color:var(--orange)">.</span></h1><p class="page-subtitle">' +
             esc(desc.clean) +
-            '</p></div><div class="head-buttons"><button class="btn" data-action="export-csv">↓ Save current data</button></div></div><div class="notice"><b>Important:</b> transformations affect the working dataset in this tab. Export a copy before destructive changes; the original local file is not modified.</div><div class="grid two-col"><div class="panel workspace-panel"><div class="eyebrow">MISSING VALUES</div><h2 class="panel-title" style="font-size:19px;margin-bottom:6px">' +
+            '</p></div><div class="head-buttons">' +
+            undoButton() +
+            '<button class="btn" data-action="export-csv">↓ Save current data</button></div></div><div class="notice"><b>Important:</b> transformations affect the working dataset in this tab. ' +
+            (engineActive
+              ? "Changes made in the local engine cannot be undone here; export a copy first."
+              : "The last " + UNDO_LIMIT + " changes can be undone while this tab stays open; undo history is cleared when a new file is imported.") +
+            ' The original local file is not modified.</div><div class="grid two-col"><div class="panel workspace-panel"><div class="eyebrow">MISSING VALUES</div><h2 class="panel-title" style="font-size:19px;margin-bottom:6px">' +
             fmt(missingCount()) +
             ' blank cells detected</h2><p class="hint">Filling with zero is not the same as knowing the true value.</p><div class="controls" style="margin-top:18px"><div class="field"><label for="fillStrategy">Fill strategy</label><select id="fillStrategy"><option value="leave">Leave missing as-is</option><option value="drop">Drop rows with any missing value</option><option value="marker">Fill blanks with text marker</option><option value="zero">Fill numeric blanks with 0</option><option value="mean">Fill numeric blanks with column mean</option><option value="median">Fill numeric blanks with column median</option></select></div><div class="field"><label for="fillMarker">Text marker</label><input id="fillMarker" value="Unknown"></div></div><button class="btn orange" data-action="apply-missing">Apply missing-value strategy</button></div><div class="panel workspace-panel"><div class="eyebrow">DUPLICATE ROWS</div><h2 class="panel-title" style="font-size:19px;margin-bottom:6px">' +
             fmt(duplicateCount()) +
@@ -2613,7 +2660,20 @@
             '</div><div class="section-head"><div><h2>Interpretation guide</h2><p>Use shape and context, not a single number.</p></div></div><div class="grid two-col"><div class="panel workspace-panel"><strong>Location & spread</strong><ul class="insight-list"><li>Mean can be pulled by extremes; compare it with the median.</li><li>SD describes variability in the same units as the measure.</li><li>Quantiles help identify skew and distribution shifts.</li></ul></div><div class="panel workspace-panel"><strong>Before inference</strong><ul class="insight-list"><li>Inspect missingness patterns and the measurement process.</li><li>Check unusual observations with domain context.</li><li>Summary statistics alone do not establish causality.</li></ul></div></div>'
           );
         }
+        // Title shared by the SVG, the dashboard card and exports.
+        function chartTitle() {
+          const t = chartState.type;
+          if (t === "histogram") return "Distribution of " + chartState.y + " (count per bin)";
+          if (t === "box plot") return "Distribution of " + chartState.y;
+          if (t === "scatter") return chartState.y + " vs " + chartState.x;
+          if (chartState.agg === "count") return "Count of rows by " + chartState.x;
+          return chartState.agg + " of " + chartState.y + " by " + chartState.x;
+        }
+        // Groups whose measure is blank in every row cannot be plotted with
+        // sum/mean/median; they are listed in a visible note instead.
+        let chartOmitted = [];
         function chartRows() {
+          chartOmitted = [];
           if (engineActive) return engineChartRows();
           const g = chartState.x,
             y = chartState.y,
@@ -2678,7 +2738,11 @@
               n: a.length,
               rows: counts[label],
             }))
-            .filter((x) => ag === "count" || x.n > 0);
+            .filter((x) => {
+              if (ag === "count" || x.n > 0) return true;
+              chartOmitted.push(x.label + " (" + x.rows + " rows)");
+              return false;
+            });
           rows.sort((a, b) =>
             chartState.order === "asc" ? a.value - b.value : b.value - a.value,
           );
@@ -3056,9 +3120,7 @@
             '" rx="10" fill="#fffefa"/><text x="' +
             left +
             '" y="19" fill="#39372f" font-size="13" font-weight="700">' +
-            esc(
-              chartState.agg + " of " + chartState.y + " by " + chartState.x,
-            ) +
+            esc(chartTitle()) +
             "</text>";
           if (chartState.type === "pie" || chartState.type === "donut") {
             const total = sum(a.map((d) => Math.max(0, d.value)));
@@ -3228,9 +3290,7 @@
               '" role="img" aria-label="Horizontal bar chart"><rect width="900" height="' +
               Math.max(250, a.length * 34 + 70) +
               '" rx="10" fill="#fffefa"/><text x="20" y="24" fill="#39372f" font-size="13" font-weight="700">' +
-              esc(
-                chartState.agg + " of " + chartState.y + " by " + chartState.x,
-              ) +
+              esc(chartTitle()) +
               "</text>";
             const maxAbs = Math.max(...a.map((d) => Math.abs(d.value)), 1),
               labelW = 190,
@@ -3342,7 +3402,7 @@
             '" transform="rotate(-90 16 ' +
             (top + ph / 2) +
             ')" text-anchor="middle" fill="#777265" font-size="11">' +
-            esc(chartState.agg + " of " + chartState.y) +
+            esc(chartState.type === "histogram" ? "rows per bin" : chartState.agg + " of " + chartState.y) +
             "</text></svg>";
           return svg;
         }
@@ -3456,8 +3516,7 @@
           const svg = $("#chartHost")?.querySelector("svg");
           if (!svg)
             throw Error("Build a chart before adding it to the dashboard.");
-          const title =
-            chartState.agg + " of " + chartState.y + " by " + chartState.x;
+          const title = chartTitle();
           dashboardCharts.push({
             title,
             subtitle:
@@ -3591,7 +3650,17 @@
               : "") +
             '<div class="chart-stage" id="chartHost">' +
             renderChart() +
-            '</div><div class="hint" style="margin-top:12px">Hover or tap a mark to inspect its value. Pie and donut charts show each category’s share; horizontal bars help with long labels. SVG export preserves the chart as a scalable vector graphic.</div></div><div class="panel workspace-panel" style="margin-top:16px"><div class="section-head"><div><h2>Dashboard canvas</h2><p>Collect multiple charts into one exportable report.</p></div><div class="head-buttons"><button class="btn" data-action="export-dashboard">↓ Export HTML</button><button class="btn" data-action="export-dashboard-json">↓ JSON</button><button class="btn" data-action="import-dashboard-json">↑ Import</button><button class="btn" data-action="clear-dashboard">Clear</button></div></div><div id="dashboardCanvas">' +
+            "</div>" +
+            (chartOmitted.length
+              ? '<div class="notice" role="status" style="margin-top:10px"><b>Not plotted:</b> ' +
+                esc(chartOmitted.join(", ")) +
+                " — every " +
+                esc(chartState.y) +
+                " value in these groups is blank, so a " +
+                esc(chartState.agg) +
+                " cannot be computed. Use Count, or fill the blanks in Clean & transform.</div>"
+              : "") +
+            '<div<div class="hint" style="margin-top:12px">Hover or tap a mark to inspect its value. Pie and donut charts show each category’s share; horizontal bars help with long labels. SVG export preserves the chart as a scalable vector graphic.</div></div><div class="panel workspace-panel" style="margin-top:16px"><div class="section-head"><div><h2>Dashboard canvas</h2><p>Collect multiple charts into one exportable report.</p></div><div class="head-buttons"><button class="btn" data-action="export-dashboard">↓ Export HTML</button><button class="btn" data-action="export-dashboard-json">↓ JSON</button><button class="btn" data-action="import-dashboard-json">↑ Import</button><button class="btn" data-action="clear-dashboard">Clear</button></div></div><div id="dashboardCanvas">' +
             renderDashboard() +
             '</div></div><div class="grid two-col" style="margin-top:16px"><div class="panel workspace-panel"><strong>Chart data</strong><p class="hint" style="margin:6px 0 12px">Values behind the current visualization.</p><div class="table-wrap">' +
             genericTable(
@@ -4096,10 +4165,10 @@
             '</p></div><div class="head-buttons"><button class="btn" data-action="export-sql-result">↓ Export result</button></div></div><div class="notice blue">' +
             (engineActive
               ? "SQL runs in <b>DuckDB on this computer</b> against the full dataset. The table is named <code>data</code>. The lab is read-only (SELECT, DESCRIBE, SUMMARIZE, EXPLAIN); up to 1,000 result rows are shown and <b>Export result</b> downloads every row. Column names with spaces or reserved words need double quotes."
-              : "SQL runs against an in-memory SQLite database created from the current dataset. The table is named <code>data</code>. Column names with spaces or reserved words need double quotes. SQL.js and its WebAssembly file load from a public CDN the first time you run a query.") +
-            '</div><div class="panel workspace-panel"><div class="field"><label for="sqlEditor">SQL query</label><textarea class="sql-editor" id="sqlEditor" spellcheck="false">SELECT region, SUM(revenue) AS total_revenue, COUNT(*) AS orders\nFROM data\nGROUP BY region\nORDER BY total_revenue DESC;</textarea></div><div class="sql-suggestions"><button class="code-chip" data-sql="SELECT * FROM data LIMIT 50;">SELECT sample</button><button class="code-chip" data-sql="SELECT COUNT(*) AS row_count FROM data;">COUNT rows</button><button class="code-chip" data-sql="SELECT region, AVG(revenue) AS avg_revenue FROM data GROUP BY region;">GROUP BY</button><button class="code-chip" data-sql="SELECT * FROM data WHERE revenue IS NULL;">Find nulls</button></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn orange" data-action="run-sql" id="runSqlBtn">▶ Run query</button><span class="hint">' +
+              : "SQL runs against an in-memory SQLite database created from the current dataset. The table is named <code>data</code>. Column names with spaces or reserved words need double quotes. It runs in a background worker, so the page stays usable and long queries can be cancelled. SQL.js 1.14.2 and its WebAssembly file are bundled with ReData (with the public CDN as a backup) and are checked against pinned fingerprints. Press Ctrl+Enter to run.") +
+            '</div><div class="panel workspace-panel"><div class="field"><label for="sqlEditor">SQL query</label><textarea class="sql-editor" id="sqlEditor" spellcheck="false">SELECT region, SUM(revenue) AS total_revenue, COUNT(*) AS orders\nFROM data\nGROUP BY region\nORDER BY total_revenue DESC;</textarea></div><div class="sql-suggestions"><button class="code-chip" data-sql="SELECT * FROM data LIMIT 50;">SELECT sample</button><button class="code-chip" data-sql="SELECT COUNT(*) AS row_count FROM data;">COUNT rows</button><button class="code-chip" data-sql="SELECT region, AVG(revenue) AS avg_revenue FROM data GROUP BY region;">GROUP BY</button><button class="code-chip" data-sql="SELECT * FROM data WHERE revenue IS NULL;">Find nulls</button></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn orange" data-action="run-sql" id="runSqlBtn" aria-keyshortcuts="Control+Enter">▶ Run query</button><button class="btn" data-action="cancel-sql" id="cancelSqlBtn" hidden>■ Cancel</button><span class="hint">' +
             (engineActive ? "DuckDB · local engine · full dataset" : "SQLite · in-memory · current dataset snapshot") +
-            '</span></div><div id="sqlMessage"></div><div id="sqlHost" style="margin-top:12px"><div class="empty">Run a query to see results.</div></div></div>'
+            '</span></div><div id="sqlMessage" role="status" aria-live="polite"></div><div id="sqlHost" style="margin-top:12px"><div class="empty">Run a query to see results.</div></div></div>'
           );
         }
         function learningTemplate() {
@@ -5054,6 +5123,13 @@
         }
         function convertCell(x) {
           if (x === undefined || x === null) return null;
+          if (x instanceof Date) {
+            if (isNaN(x.getTime())) return null;
+            const iso = x.toISOString();
+            return iso.slice(11, 19) === "00:00:00"
+              ? iso.slice(0, 10)
+              : iso.slice(0, 10) + " " + iso.slice(11, 19);
+          }
           if (typeof x === "string") {
             const v = x.trim();
             if (!v) return null;
@@ -5303,7 +5379,7 @@
               return;
             }
             const workerSource =
-              'self.onmessage=async function(e){try{importScripts("https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js");const buf=e.data.buf;const si=e.data.sheet||0;const book=XLSX.read(buf,{type:"array",dense:true});const names=book.SheetNames;const first=book.Sheets[names[si]];if(!first||!first["!ref"])throw Error("The selected worksheet is empty.");const range=XLSX.utils.decode_range(first["!ref"]);const preview=XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:range.s.r,c:range.s.c},e:{r:Math.min(range.e.r,range.s.r+19),c:range.e.c}},defval:null,raw:true,blankrows:false});const total=range.e.r-range.s.r+1;if(total>1000001)throw Error("Browser-only mode handles up to 1,000,000 rows. The selected sheet contains "+(total-1)+" rows. Start the ReData local engine to import it.");const rows=[];for(let start=range.s.r;start<=range.e.r;start+=500){const end=Math.min(range.e.r,start+499);rows.push(...XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:start,c:range.s.c},e:{r:end,c:range.e.c}},defval:null,raw:true,blankrows:false}));self.postMessage({type:"progress",rows:Math.min(rows.length,total),total:total});}self.postMessage({type:"done",names:names,preview:preview,rows:rows});}catch(err){self.postMessage({type:"error",message:err&&err.message||String(err)});}}';
+              'async function loadLib(us,h,name){let r=null;for(const u of us){try{const x=await fetch(u,{integrity:h,credentials:"omit"});if(x.ok){r=x;break;}}catch(_){}}if(!r)throw Error("Could not load "+name+". The copy bundled with ReData and the CDN copy both failed to load or did not match the pinned fingerprint (Subresource Integrity). Check your connection and reload the page.");const t=await r.text();importScripts(URL.createObjectURL(new Blob([t],{type:"text/javascript"})));}self.onmessage=async function(e){try{if(!self.XLSX)await loadLib(['+JSON.stringify(new URL("vendor/xlsx.full.min.js",location.href).href)+',"https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"],"sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT","the Excel reader (SheetJS 0.20.3)");const buf=e.data.buf;const si=e.data.sheet||0;const book=XLSX.read(buf,{type:"array",dense:true,cellDates:true});const names=book.SheetNames;const first=book.Sheets[names[si]];if(!first||!first["!ref"])throw Error("The selected worksheet is empty.");const range=XLSX.utils.decode_range(first["!ref"]);const preview=XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:range.s.r,c:range.s.c},e:{r:Math.min(range.e.r,range.s.r+19),c:range.e.c}},defval:null,raw:true,blankrows:false});const total=range.e.r-range.s.r+1;if(total>1000001)throw Error("Browser-only mode handles up to 1,000,000 rows. The selected sheet contains "+(total-1)+" rows. Start the ReData local engine to import it.");const rows=[];for(let start=range.s.r;start<=range.e.r;start+=500){const end=Math.min(range.e.r,start+499);rows.push(...XLSX.utils.sheet_to_json(first,{header:1,range:{s:{r:start,c:range.s.c},e:{r:end,c:range.e.c}},defval:null,raw:true,blankrows:false}));self.postMessage({type:"progress",rows:Math.min(rows.length,total),total:total});}self.postMessage({type:"done",names:names,preview:preview,rows:rows});}catch(err){self.postMessage({type:"error",message:err&&err.message||String(err)});}}';
             const url = URL.createObjectURL(
               new Blob([workerSource], { type: "text/javascript" }),
             );
@@ -5380,6 +5456,15 @@
             pendingImportRows = null;
             pendingImportExt = file.name.split(".").pop().toLowerCase();
             const ext = pendingImportExt;
+            // Browser-only mode reads text tables and Excel. Scientific and
+            // binary formats in the file picker need the local engine; parsing
+            // them as CSV produced misleading "no data rows" results.
+            if (!["csv", "tsv", "txt", "json", "ndjson", "jsonl", "xlsx", "xls"].includes(ext))
+              throw Error(
+                "." +
+                  ext +
+                  " files need the ReData local engine on your computer. Browser-only mode reads CSV, TSV, TXT, JSON, NDJSON/JSONL and Excel (.xlsx, .xls).",
+              );
             $("#headerEditor").hidden = true;
             $("#headerEditor").innerHTML = "";
             setImportProgress("Opening " + file.name + "…");
@@ -5420,7 +5505,7 @@
                   )
                 ) {
                   loadRows(obj, file.name);
-                  $("#importProgress").hidden = true;
+                  if ($("#importProgress")) $("#importProgress").hidden = true;
                   return;
                 }
                 rawRows = obj;
@@ -5430,7 +5515,7 @@
                   .filter((s) => s.trim())
                   .map((s) => JSON.parse(s));
                 loadRows(rawRows, file.name);
-                $("#importProgress").hidden = true;
+                if ($("#importProgress")) $("#importProgress").hidden = true;
                 return;
               } else {
                 const delimiter =
@@ -5684,6 +5769,49 @@
           pageOffset = 0;
           toast(r.message);
           go("clean");
+        }
+        // Undo: each browser-mode transformation keeps the previous row array
+        // (rows are copied on write, so this is a cheap reference). Only the
+        // last UNDO_LIMIT steps are kept, and only for the current dataset.
+        const UNDO_LIMIT = 5;
+        let undoStack = [];
+        function canUndo() {
+          const top = undoStack[undoStack.length - 1];
+          return !engineActive && !!top && top.after === data;
+        }
+        async function withUndo(label, fn) {
+          const before = data;
+          await fn();
+          if (!engineActive && data !== before) {
+            const top = undoStack[undoStack.length - 1];
+            if (top && top.after !== before) undoStack = [];
+            undoStack.push({ before, after: data, label });
+            if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+            if (activeView === "clean") go("clean");
+          }
+        }
+        function undoClean() {
+          if (!canUndo()) throw Error("Nothing to undo for the current dataset.");
+          const top = undoStack.pop();
+          data = top.before;
+          sortBy = null;
+          filterState = { column: "", query: "" };
+          pageOffset = 0;
+          toast("Undid: " + top.label + ".");
+          go("clean");
+        }
+        function undoButton() {
+          const ok = canUndo(),
+            top = undoStack[undoStack.length - 1];
+          return (
+            '<button class="btn" data-action="undo-clean"' +
+            (ok ? "" : " disabled") +
+            ' aria-label="' +
+            (ok ? "Undo " + esc(top.label) : "Undo (nothing to undo)") +
+            '">↶ Undo' +
+            (ok ? " · " + esc(top.label) : "") +
+            "</button>"
+          );
         }
         async function applyMissing() {
           const strategy = $("#fillStrategy").value;
@@ -6033,52 +6161,53 @@
             return;
           }
           msg.innerHTML =
-            '<div class="result-message ok">Preparing in-memory SQLite database…</div>';
+            '<div class="result-message ok">Preparing the SQL engine in the background…</div>';
+          const cancelBtn = $("#cancelSqlBtn");
+          if (cancelBtn) cancelBtn.hidden = false;
+          const t0 = performance.now();
           try {
-            if (!window.initSqlJs)
-              await loadScript(
-                "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.js",
+            if (sqlWorkerData !== data) {
+              const names = cols(),
+                ident = (c) => '"' + c.replace(/"/g, '""') + '"',
+                type = (c) => (numCols().includes(c) ? "REAL" : "TEXT");
+              const rows = data.map((r) =>
+                names.map((c) => (blank(r[c]) ? null : r[c])),
               );
-            const SQL = await window.initSqlJs({
-              locateFile: (f) =>
-                "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/" + f,
-            });
-            if (sqlDb) sqlDb.close();
-            sqlDb = new SQL.Database();
-            const names = cols(),
-              ident = (c) => '"' + c.replace(/"/g, '""') + '"',
-              type = (c) => (numCols().includes(c) ? "REAL" : "TEXT"),
-              schema = names.map((c) => ident(c) + " " + type(c)).join(",");
-            sqlDb.run("CREATE TABLE data (" + schema + ")");
-            const ins = sqlDb.prepare(
-              "INSERT INTO data (" +
-                names.map(ident).join(",") +
-                ") VALUES (" +
-                names.map(() => "?").join(",") +
-                ")",
-            );
-            // One transaction for the bulk load: per-row autocommit made
-            // large datasets take close to a minute before each query.
-            sqlDb.run("BEGIN");
-            try {
-              data.forEach((r) =>
-                ins.run(names.map((c) => (blank(r[c]) ? null : r[c]))),
-              );
-              sqlDb.run("COMMIT");
-            } finally {
-              ins.free();
+              await sqlCall({
+                type: "load",
+                create:
+                  "CREATE TABLE data (" +
+                  names.map((c) => ident(c) + " " + type(c)).join(",") +
+                  ")",
+                insert:
+                  "INSERT INTO data (" +
+                  names.map(ident).join(",") +
+                  ") VALUES (" +
+                  names.map(() => "?").join(",") +
+                  ")",
+                rows,
+              });
+              sqlWorkerData = data;
             }
-            const result = sqlDb.exec(query);
+            msg.innerHTML =
+              '<div class="result-message ok">Running query in the background… you can keep using ReData or press Cancel.</div>';
+            const r = await sqlCall({ type: "query", query });
+            // Statements other than reads may change the table; rebuild it
+            // from the working dataset before the next query.
+            if (!/^\s*(select|with|explain|pragma|values)\b/i.test(query))
+              sqlWorkerData = null;
+            const ms = performance.now() - t0;
             let out = [];
-            if (result.length) {
-              const r = result[result.length - 1];
+            if (r.columns.length) {
               out = r.values.map((vals) =>
                 Object.fromEntries(r.columns.map((c, i) => [c, vals[i]])),
               );
               host.innerHTML = genericTable(out);
               lastQueryRows = out;
               msg.innerHTML =
-                '<div class="result-message ok">Query completed · ' +
+                '<div class="result-message ok">Query completed in ' +
+                fmt(Math.round(ms)) +
+                " ms · " +
                 out.length +
                 " result rows" +
                 (out.length === 1000 ? " shown in the UI" : "") +
@@ -6095,13 +6224,150 @@
               '<div class="result-message error">' +
               esc(e.message || String(e)) +
               "</div>";
-            host.innerHTML =
-              '<div class="empty">Fix the query or check its column names, then run it again.</div>';
+            host.innerHTML = e.cancelled
+              ? '<div class="empty">Query cancelled. Run it again when ready.</div>'
+              : '<div class="empty">Fix the query or check its column names, then run it again.</div>';
           } finally {
             btn.disabled = false;
+            if (cancelBtn) cancelBtn.hidden = true;
+          }
+        }
+        // sql.js runs in a dedicated worker so long loads and queries never
+        // freeze the page. Libraries are pinned and integrity-checked.
+        const SQLJS_BASE = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/";
+        const SQLJS_SRI = {
+          js: "sha384-7Zym2PlgXfg8ap8cqJUwlZrLl+VEwt0NVbzYfhH28IWLnSpAgQOnSCY2+EXo5MtM",
+          wasm: "sha384-x0YkuPkDHnKTZcB1JO4eb6j5+eU36aka+jBA6tOKTFaTz98b9V7fPT0QgZ9qyQW2",
+        };
+        let sqlWorker = null,
+          sqlWorkerData = null,
+          sqlPending = null;
+        function sqlWorkerMain() {
+          let SQL = null,
+            db = null;
+          // Bundled copy first (works offline), then the pinned CDN copy.
+          async function lib(file, h) {
+            for (const base of BASES) {
+              try {
+                const r = await fetch(base + file, { integrity: h, credentials: "omit" });
+                if (r.ok) return r;
+              } catch (_) {
+                /* try the next source */
+              }
+            }
+            throw Error(
+              "Could not load the SQL engine (sql.js 1.14.2). The copy bundled with ReData and the CDN copy both failed to load or did not match the pinned fingerprint (Subresource Integrity). Check your connection and reload the page.",
+            );
+          }
+          self.onmessage = async (e) => {
+            const m = e.data;
+            try {
+              if (!SQL) {
+                self.postMessage({ type: "progress", text: "Loading the SQL engine (first run only)…" });
+                const js = await (await lib("sql-wasm.js", SRI.js)).text();
+                importScripts(URL.createObjectURL(new Blob([js], { type: "text/javascript" })));
+                const wasm = await (await lib("sql-wasm.wasm", SRI.wasm)).arrayBuffer();
+                SQL = await initSqlJs({ wasmBinary: new Uint8Array(wasm) });
+              }
+              if (m.type === "load") {
+                if (db) db.close();
+                db = new SQL.Database();
+                db.run(m.create);
+                const ins = db.prepare(m.insert),
+                  rows = m.rows,
+                  total = rows.length;
+                db.run("BEGIN");
+                try {
+                  for (let i = 0; i < total; i++) {
+                    ins.run(rows[i]);
+                    if (i && i % 50000 === 0)
+                      self.postMessage({ type: "progress", text: "Loading rows into SQLite: " + i.toLocaleString() + " / " + total.toLocaleString() + "…" });
+                  }
+                  db.run("COMMIT");
+                } finally {
+                  ins.free();
+                }
+                self.postMessage({ type: "done" });
+              } else if (m.type === "query") {
+                if (!db) throw Error("The SQL table is not ready. Run the query again.");
+                const res = db.exec(m.query),
+                  last = res.length ? res[res.length - 1] : null;
+                self.postMessage({ type: "done", columns: last ? last.columns : [], values: last ? last.values : [] });
+              }
+            } catch (err) {
+              self.postMessage({ type: "error", message: (err && err.message) || String(err) });
+            }
+          };
+        }
+        function getSqlWorker() {
+          if (sqlWorker) return sqlWorker;
+          if (typeof Worker === "undefined")
+            throw Error("This browser cannot run SQL in the background (no Web Worker support).");
+          const src =
+            "const BASES=" + JSON.stringify([new URL("vendor/", location.href).href, SQLJS_BASE]) + ";const SRI=" + JSON.stringify(SQLJS_SRI) + ";(" + sqlWorkerMain.toString() + ")();";
+          const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+          sqlWorker = new Worker(url);
+          URL.revokeObjectURL(url);
+          sqlWorker.onmessage = (e) => {
+            const m = e.data,
+              p = sqlPending;
+            if (!p) return;
+            if (m.type === "progress") {
+              const el = $("#sqlMessage");
+              if (el) el.innerHTML = '<div class="result-message ok">' + esc(m.text) + "</div>";
+              return;
+            }
+            sqlPending = null;
+            if (m.type === "error") p.reject(Error(m.message));
+            else p.resolve(m);
+          };
+          sqlWorker.onerror = (e) => {
+            const p = sqlPending;
+            resetSqlWorker();
+            if (p) p.reject(Error("The SQL worker stopped: " + (e.message || "unknown error")));
+          };
+          return sqlWorker;
+        }
+        function resetSqlWorker() {
+          if (sqlWorker) sqlWorker.terminate();
+          sqlWorker = null;
+          sqlWorkerData = null;
+          sqlPending = null;
+        }
+        function sqlCall(msg) {
+          const w = getSqlWorker();
+          return new Promise((resolve, reject) => {
+            sqlPending = { resolve, reject };
+            w.postMessage(msg);
+          });
+        }
+        function cancelSQL() {
+          const p = sqlPending;
+          resetSqlWorker();
+          if (p) {
+            const err = Error("Query cancelled. The background SQL engine was stopped.");
+            err.cancelled = true;
+            p.reject(err);
           }
         }
         function bindEvents() {
+          document.addEventListener("keydown", (e) => {
+            const t = e.target;
+            if (!t || !t.matches) return;
+            if ((e.key === "Enter" || e.key === " ") && t.matches("th[data-sort]")) {
+              e.preventDefault();
+              const c = t.dataset.sort;
+              t.click();
+              requestAnimationFrame(() => {
+                const again = [...document.querySelectorAll("th[data-sort]")].find((x) => x.dataset.sort === c);
+                if (again) again.focus();
+              });
+            } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && t.id === "sqlEditor") {
+              e.preventDefault();
+              const b = $("#runSqlBtn");
+              if (b && !b.disabled) b.click();
+            }
+          });
           document.addEventListener("click", async (e) => {
             const nav = e.target.closest("[data-view]");
             if (nav) {
@@ -6196,16 +6462,21 @@
                   else $("#dataTableHost").innerHTML = browserTable();
                   break;
                 case "apply-missing":
-                  await applyMissing();
+                  await withUndo("missing-value strategy", applyMissing);
                   break;
                 case "dedupe":
-                  await dropDuplicates();
+                  await withUndo("remove duplicates", dropDuplicates);
                   break;
                 case "trim-text":
-                  await trimText();
+                  await withUndo("trim text", trimText);
                   break;
-                case "drop-column":
-                  await dropColumn();
+                case "drop-column": {
+                  const dc = $("#dropColumn") && $("#dropColumn").value;
+                  await withUndo("remove column " + dc, dropColumn);
+                  break;
+                }
+                case "undo-clean":
+                  undoClean();
                   break;
                 case "build-chart":
                   chartState = {
@@ -6310,11 +6581,15 @@
                   }
                   const calc = data.map((r) => formulaEval(expr, r));
                   let changed = 0;
+                  const beforeFormula = data;
                   data = data.map((r, i) => {
                     const o = { ...r, [name]: calc[i] };
                     if (calc[i] !== null) changed++;
                     return o;
                   });
+                  if (undoStack.length && undoStack[undoStack.length - 1].after !== beforeFormula) undoStack = [];
+                  undoStack.push({ before: beforeFormula, after: data, label: "add column " + name });
+                  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
                   $("#formulaHost").innerHTML =
                     '<div class="result-message ok">Created <b>' +
                     esc(name) +
@@ -6328,6 +6603,9 @@
                 }
                 case "run-sql":
                   await runSQL();
+                  break;
+                case "cancel-sql":
+                  cancelSQL();
                   break;
                 case "export-sql-result":
                   if (!lastQueryRows) throw Error("Run a SQL query first.");
