@@ -12,7 +12,7 @@ This file records third-party software and assets that are explicitly referenced
 
 | Component | Version / use observed in repository | License | Required notice / source |
 |---|---|---|---|
-| SheetJS Community Edition (`xlsx`) | official SheetJS CDN reference `xlsx-0.20.3` in `index.html` | Apache-2.0 | Preserve license and copyright notices; include the attribution below. [Official license guidance](https://docs.sheetjs.com/docs/miscellany/license/) |
+| SheetJS Community Edition (`xlsx`) | official SheetJS CDN reference `xlsx-0.20.3` in `index.html` | Apache-2.0 | Preserve license and copyright notices; include the attribution below. The former `xlsx@0.18.5` reference was affected by CVE-2023-30533 when reading crafted files; ReData now uses the official fixed 0.20.3 build. [Official license guidance](https://docs.sheetjs.com/docs/miscellany/license/) · [SheetJS security advisory](https://cdn.sheetjs.com/advisories/CVE-2023-30533) |
 | sql.js | cdnjs reference `sql.js/1.14.2` in `index.html` | MIT | Preserve the upstream copyright and license notice. [Upstream license](https://github.com/sql-js/sql.js/blob/master/LICENSE) |
 | DM Sans, DM Mono, Manrope | Loaded from Google Fonts CSS | SIL Open Font License 1.1 (verify the exact served font files/versions when packaging) | Font files and any bundled copies must retain their own OFL license and reserved-font-name terms where applicable. [Google Fonts](https://fonts.google.com/) |
 
