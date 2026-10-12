@@ -2,7 +2,7 @@
 
 All notable changes to ReData are documented here.
 
-## [0.2.0] - 2026-10-12
+## [0.2.0-rc.1] - 2026-10-12
 
 This release candidate contains tested browser-app reliability fixes from the functional audit. The historical v0.1.0 archive and DOI remain unchanged.
 
