@@ -24,7 +24,9 @@ def key(value: str) -> str:
 def sbom_license(component: dict) -> str | None:
     values: list[str] = []
     for item in component.get("licenses", []):
-        license_obj = item.get("license", {})
+        # CycloneDX permits either a nested {"license": {...}} object or
+        # a direct license/expression object in this array.
+        license_obj = item.get("license", item)
         if license_obj.get("expression"):
             values.append(license_obj["expression"])
         elif license_obj.get("id"):
