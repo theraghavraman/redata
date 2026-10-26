@@ -54,6 +54,18 @@ NUMERIC_PREFIXES = (
     "DECIMAL", "REAL",
 )
 DATE_PREFIXES = ("DATE", "TIMESTAMP", "TIME")
+
+# Table functions that read from the filesystem or network. The SQL lab is a
+# read-only *query* surface over the loaded dataset, not a file browser, so
+# these are rejected even inside an otherwise-valid SELECT (incl. CTEs/subqueries).
+FILE_FUNCTIONS = (
+    "read_csv", "read_csv_auto", "read_json", "read_json_auto", "read_ndjson",
+    "read_ndjson_auto", "read_json_objects", "read_parquet", "parquet_scan",
+    "parquet_metadata", "parquet_schema", "parquet_file_metadata",
+    "parquet_kv_metadata", "read_text", "read_blob", "glob", "sniff_csv",
+    "read_xlsx", "delta_scan", "iceberg_scan",
+)
+_FILE_FUNC_RE = re.compile(r"\b(" + "|".join(FILE_FUNCTIONS) + r")\s*\(", re.IGNORECASE)
 STATIC_TYPES = {
     ".html": "text/html; charset=utf-8",
     ".svg": "image/svg+xml",
@@ -987,6 +999,11 @@ class Engine:
                 raise UserError(
                     "The SQL lab is read-only: only SELECT-style queries run here (DESCRIBE, SUMMARIZE and EXPLAIN "
                     "are fine). Use Clean & transform or Formula builder to change the data.")
+            if _FILE_FUNC_RE.search(s.query):
+                raise UserError(
+                    "The SQL lab queries the loaded dataset only. File- or URL-reading functions "
+                    "(read_csv, read_parquet, read_text, glob, …) are not allowed here. "
+                    "Use Import data or a Connection to bring a file in.")
         return stmts[-1]
 
     def sql(self, query):
@@ -1058,6 +1075,18 @@ def make_handler(engine, token, port):
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("X-Frame-Options", "DENY")
+            self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+            self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+            self.send_header(
+                "Content-Security-Policy",
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
+                "img-src 'self' data: blob:; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
             for k, v in (extra or {}).items():
                 self.send_header(k, v)
             self.end_headers()
@@ -1310,6 +1339,14 @@ def main():
     finally:
         server.server_close()
         with engine.lock:
+            if engine.pipeline is not None:
+                engine.pipeline.stop.set()
+                for cur in (getattr(engine.pipeline, "cur", None), getattr(engine.pipeline, "rcur", None)):
+                    try:
+                        if cur is not None:
+                            cur.close()
+                    except Exception:
+                        pass
             engine.con.close()
 
 
