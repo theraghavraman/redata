@@ -68,6 +68,19 @@ def main() -> int:
                     "value": "Normalized from pip-licenses full LGPL v2.1-or-later text and pymssql upstream source license; verify wheel/bundled FreeTDS notices before redistribution."
                 })
 
+        # The protobuf Python package is distributed under BSD-3-Clause. Some
+        # CycloneDX environment scans omit that upstream license metadata even
+        # when the installed package itself is correctly identified.
+        if not license_value and normalized == "protobuf":
+            license_value = "BSD-3-Clause"
+            component["licenses"] = [{
+                "license": {"acknowledgement": "declared", "id": license_value}
+            }]
+            component.setdefault("properties", []).append({
+                "name": "redata:license:normalization",
+                "value": "Filled from the protobuf Python package's upstream BSD-3-Clause license; verify the exact distribution's license files before redistribution."
+            })
+
         if not license_value:
             missing.append(f"{name}=={version}")
             continue
