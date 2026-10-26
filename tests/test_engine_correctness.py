@@ -235,3 +235,24 @@ class EngineCsvCorrectnessTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+def test_sql_lab_blocks_file_functions(tmp_path):
+    """The SQL lab must not read local files via DuckDB table functions."""
+    import redata_engine as R
+    eng = R.Engine(str(tmp_path / "ws"))
+    csv = tmp_path / "d.csv"
+    csv.write_text("a,b\n1,2\n")
+    sid = eng.stage_path(str(csv))["stage"]
+    eng.load(sid, header=True)
+    for q in (
+        "SELECT * FROM read_csv('/etc/passwd')",
+        "SELECT * FROM read_text('/etc/hostname')",
+        "SELECT file FROM glob('/etc/*')",
+        "WITH t AS (SELECT * FROM read_csv('/etc/passwd')) SELECT * FROM t",
+    ):
+        try:
+            eng.sql(q)
+            assert False, "file-reading query was not blocked: %s" % q
+        except R.UserError:
+            pass
+    assert eng.sql("SELECT count(*) AS n FROM data")["rows"][0]["n"] == 1
