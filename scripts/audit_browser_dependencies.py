@@ -14,7 +14,13 @@ checks = [
     ),
     (
         "SQL.js loader uses pinned 1.14.2",
-        "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.js" in HTML,
+        (
+            "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.js" in HTML
+            or (
+                'const SQLJS_BASE = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/";' in HTML
+                and 'lib("sql-wasm.js", SRI.js)' in HTML
+            )
+        ),
     ),
     (
         "SQL.js WebAssembly asset path uses the same 1.14.2 version",
