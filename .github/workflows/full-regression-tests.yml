@@ -1,0 +1,32 @@
+name: ReData full regression tests
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check pytest duckdb openpyxl xlrd pyarrow playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Run full pytest suite
+        run: python3 -m pytest tests/ -q
+      - name: Check inline JavaScript syntax
+        run: python3 scripts/check_inline_js_syntax.py
+      - name: Run browser regression
+        run: python3 tests/browser_regression.py
