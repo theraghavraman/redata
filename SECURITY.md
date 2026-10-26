@@ -13,7 +13,7 @@ Please do not publish an unpatched, exploitable vulnerability in a public issue.
 - The local engine binds to `127.0.0.1`, uses a random per-run token, checks the `Host` header against the expected local hostnames, and requires the token for API operations.
 - Do not expose the engine port to a LAN, public interface, reverse proxy, or tunnel. The loopback binding and token checks are defense-in-depth, not a guarantee against malware or a compromised local account.
 - Treat imported files, SQL text, URLs, connection metadata, and remote database/API responses as untrusted input. Keep the engine and dependencies updated.
-- The SQL lab is designed to allow read-only query statements; this is not a general-purpose SQL sandbox for arbitrary hostile code.
+- The SQL lab allows read-only query statements against the loaded dataset only. DDL, DML, and file- or URL-reading table functions (read_csv, read_parquet, read_text, glob, and similar) are rejected. It is not a general-purpose SQL sandbox for arbitrary hostile code.
 - Data imported for local-engine analysis is stored in the local workspace. Connections deliberately communicate with the external database, file service, bucket, or API that the user configures. Browser-only mode loads some libraries and fonts from third-party CDNs, as documented in the README.
 - Before sharing diagnostic logs, review them for local file paths, server addresses, dataset names, query text, and other sensitive metadata.
 
