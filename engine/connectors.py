@@ -652,7 +652,7 @@ class RestSource:
         return []
 
     def read(self, source, cursor_col=None, cursor_value=None, inclusive=False):
-        pa = _need("pyarrow", "pyarrow")
+        _need("pyarrow", "pyarrow")  # pyarrow is required to build the Arrow table
         url = urllib.parse.urljoin(self.p.get("base_url") or "", source or "")
         since = self.p.get("since_param")
         if since and cursor_value is not None:
