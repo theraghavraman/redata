@@ -64,8 +64,26 @@ FILE_FUNCTIONS = (
     "parquet_metadata", "parquet_schema", "parquet_file_metadata",
     "parquet_kv_metadata", "read_text", "read_blob", "glob", "sniff_csv",
     "read_xlsx", "delta_scan", "iceberg_scan",
+    # added: readers that were missing from the denylist entirely
+    "read_json_objects_auto", "read_ndjson_objects", "read_csv_objects",
+    "sqlite_scan", "sqlite_attach", "postgres_scan", "postgres_attach",
+    "mysql_scan", "mysql_attach", "st_read", "read_arrow", "read_feather",
 )
 _FILE_FUNC_RE = re.compile(r"\b(" + "|".join(FILE_FUNCTIONS) + r")\s*\(", re.IGNORECASE)
+_IDENT_QUOTES = ('"', "`", "[", "]")
+
+
+def _strip_identifier_quotes(sql):
+    """Drop identifier quoting so a quoted function name cannot dodge the denylist.
+
+    DuckDB resolves "read_text"('x') to the same function as read_text('x'), but
+    the regex above only matches the bare name, so quoting was a trivial bypass.
+    """
+    out = str(sql)
+    for quote in _IDENT_QUOTES:
+        if quote in out:
+            out = out.replace(quote, "")
+    return out
 STATIC_TYPES = {
     ".html": "text/html; charset=utf-8",
     ".svg": "image/svg+xml",
@@ -564,9 +582,10 @@ class Engine:
                 sample = stream.read(65536)
                 if st["ext"] == "tsv":
                     delimiter = "\t"
-                elif st["ext"] == "csv":
-                    delimiter = ","
                 else:
+                    # .csv used to be hardcoded to ',', but DuckDB auto-detects the
+                    # real delimiter, so a ';' or '|' file got its header row split
+                    # on the wrong character and every column came out misnamed.
                     try:
                         delimiter = csv.Sniffer().sniff(
                             sample[:8192], delimiters=",\t;|"
@@ -712,12 +731,23 @@ class Engine:
                 self._csv_source(st, header, all_varchar=True)]
 
     def _json_source(self, st):
-        src = "read_json_auto(%s, format='auto', maximum_object_size=1073741824)" % self._lit(st["path"])
+        # maximum_object_size is deliberately not set here. DuckDB reserves roughly
+        # twice the requested size per thread, so the previous value of 1 GiB meant a
+        # 2 GiB allocation - and an OutOfMemoryException on any machine whose DuckDB
+        # memory limit is smaller than that - even for a three-line file. The
+        # folder-sync path (_file_relation) has always used the default.
+        src = "read_json_auto(%s, format='auto')" % self._lit(st["path"])
         try:
             desc = self.q("DESCRIBE SELECT * FROM %s" % src)
-            # {"rows": [ {...}, ... ]} -> unwrap the first array of objects
+            # {"rows": [ {...}, ... ]} -> unwrap the array of objects
             if len(desc) >= 1:
                 lists = [(c, t) for c, t, *_ in desc if str(t).upper().startswith("STRUCT") and str(t).endswith("[]")]
+                if len(lists) > 1:
+                    # Picking lists[0] here silently dropped every other field.
+                    raise UserError(
+                        "This JSON file contains more than one array of records (%s). "
+                        "ReData cannot tell which one you meant. Import a file with a "
+                        "single array, or reshape it first." % ", ".join(c for c, _ in lists))
                 if lists and self.q("SELECT count(*) FROM %s" % src)[0][0] == 1:
                     c = lists[0][0]
                     return "(SELECT u.* FROM (SELECT unnest(%s) AS u FROM %s))" % (qi(c), src)
@@ -999,7 +1029,7 @@ class Engine:
                 raise UserError(
                     "The SQL lab is read-only: only SELECT-style queries run here (DESCRIBE, SUMMARIZE and EXPLAIN "
                     "are fine). Use Clean & transform or Formula builder to change the data.")
-            if _FILE_FUNC_RE.search(s.query):
+            if _FILE_FUNC_RE.search(_strip_identifier_quotes(s.query)):
                 raise UserError(
                     "The SQL lab queries the loaded dataset only. File- or URL-reading functions "
                     "(read_csv, read_parquet, read_text, glob, …) are not allowed here. "

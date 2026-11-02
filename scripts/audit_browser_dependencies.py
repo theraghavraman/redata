@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 """Fail closed if ReData's pinned browser libraries regress to known-vulnerable versions."""
 from pathlib import Path
+import base64
+import hashlib
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "index.html").read_text(encoding="utf-8")
 NOTICES = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+VENDOR = ROOT / "vendor"
+
+# Every fingerprint index.html will accept. If a bundled file does not hash to one
+# of these, the browser rejects the local copy and silently falls back to the CDN,
+# which breaks offline use - so the bytes we ship are part of the audit.
+PINNED_SRI = set(re.findall(r"sha384-([A-Za-z0-9+/]{64})", HTML))
 
 checks = [
     (
@@ -43,6 +52,16 @@ checks = [
         "sql.js/1.14.2" in NOTICES and "MIT" in NOTICES,
     ),
 ]
+
+for _name in ("sql-wasm.js", "sql-wasm.wasm", "xlsx.full.min.js"):
+    _path = VENDOR / _name
+    if not _path.is_file():
+        checks.append((f"Bundled {_name} ships with the app (offline support)", False))
+        continue
+    _digest = base64.b64encode(hashlib.sha384(_path.read_bytes()).digest()).decode()
+    checks.append(
+        (f"Bundled {_name} matches a pinned SRI fingerprint in index.html", _digest in PINNED_SRI)
+    )
 
 failed = False
 for description, ok in checks:

@@ -34,9 +34,21 @@ OPS = "redata_ops"
 LOADED_AT = "_redata_loaded_at"
 INTERVALS = [0, 5, 15, 30, 60, 180, 360, 720, 1440]
 
+INT_TYPES = ("TINYINT", "SMALLINT", "INTEGER", "BIGINT", "HUGEINT",
+             "UTINYINT", "USMALLINT", "UINTEGER", "UBIGINT", "UHUGEINT")
+FLOAT_TYPES = ("FLOAT", "DOUBLE", "REAL")
+
 
 def qi(name):
     return '"' + str(name).replace('"', '""') + '"'
+
+
+def _is_int_type(t):
+    return str(t).upper().startswith(INT_TYPES)
+
+
+def _is_float_type(t):
+    return str(t).upper().startswith(FLOAT_TYPES)
 
 
 def now_iso():
@@ -444,6 +456,23 @@ class Pipeline:
             except duckdb.Error:
                 pass
 
+    def _widen_for_batch(self, table_name, batch):
+        """Widen integer columns that are about to receive fractional values.
+
+        DuckDB casts a DOUBLE into an existing BIGINT column silently, rounding it
+        (2.75 becomes 3). A cast that cannot fail never raises ConversionException,
+        so the widening in _write_arrow's retry never fired for numeric data and
+        incremental syncs quietly lost the decimal part. Widen before the INSERT.
+        """
+        have = {c.lower(): t for c, t in self._cols(table_name)}
+        for c, t in batch:
+            current = have.get(c.lower())
+            if not current or not _is_int_type(current) or not _is_float_type(t):
+                continue
+            self.cur.execute("ALTER TABLE %s ALTER COLUMN %s TYPE DOUBLE"
+                             % (self._tbl(table_name), qi(c)))
+            have[c.lower()] = "DOUBLE"
+
     def _write_arrow(self, table_name, arrow_tbl, created):
         """Append an Arrow table to a staging table, creating it and adding new columns as needed."""
         reg = "__redata_batch_%s" % uuid.uuid4().hex[:8]
@@ -458,6 +487,7 @@ class Pipeline:
             for c, t in batch:
                 if c.lower() not in have:
                     self.cur.execute("ALTER TABLE %s ADD COLUMN %s %s" % (self._tbl(table_name), qi(c), "VARCHAR" if t == '"NULL"' else t))
+            self._widen_for_batch(table_name, batch)
             try:
                 self.cur.execute("INSERT INTO %s BY NAME SELECT *, current_timestamp AS %s FROM %s"
                                  % (self._tbl(table_name), qi(LOADED_AT), reg))

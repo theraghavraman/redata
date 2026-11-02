@@ -1313,6 +1313,9 @@
         "use strict";
         const $ = (s) => document.querySelector(s),
           $$ = (s) => Array.from(document.querySelectorAll(s));
+        // Browser-mode SQL renders at most this many rows, matching the engine's
+        // SQL_UI_ROWS. The full result is still kept for export.
+        const SQL_UI_ROWS = 1000;
         const esc = (v) =>
           String(v === null || v === undefined ? "" : v).replace(
             /[&<>"']/g,
@@ -5144,8 +5147,13 @@
             throw Error("No non-empty rows were found in the file.");
           let width = 0;
           for (const r of rawRows) width = Math.max(width, r.length);
+          // customNames is what the import dialog's "Column names" editor collects.
+          // It used to be ignored whenever hasHeader was true, so edits made in the
+          // default mode were silently thrown away.
           const names = uniqueHeaders(
-              hasHeader ? rawRows[0] : customNames,
+              hasHeader && !(customNames && customNames.length)
+                ? rawRows[0]
+                : customNames,
               width,
             ),
             start = hasHeader ? 1 : 0;
@@ -6202,7 +6210,11 @@
               out = r.values.map((vals) =>
                 Object.fromEntries(r.columns.map((c, i) => [c, vals[i]])),
               );
-              host.innerHTML = genericTable(out);
+              // Only a page of rows goes into the DOM: the worker returns every row
+              // of the last statement, and one HTML string for a million of them
+              // froze the tab while the status line claimed a 1,000-row cap.
+              const shown = out.slice(0, SQL_UI_ROWS);
+              host.innerHTML = genericTable(shown);
               lastQueryRows = out;
               msg.innerHTML =
                 '<div class="result-message ok">Query completed in ' +
@@ -6210,7 +6222,9 @@
                 " ms · " +
                 out.length +
                 " result rows" +
-                (out.length === 1000 ? " shown in the UI" : "") +
+                (shown.length < out.length
+                  ? " (" + shown.length.toLocaleString() + " shown in the UI)"
+                  : "") +
                 ".</div>";
             } else {
               host.innerHTML =
