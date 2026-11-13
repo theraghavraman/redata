@@ -27,7 +27,7 @@ import uuid
 
 import duckdb
 
-import connectors as C
+from . import connectors as C
 
 SCHEMA = "staging"
 OPS = "redata_ops"
@@ -60,7 +60,9 @@ class PipelineError(Exception):
 
 
 class Pipeline:
-    def __init__(self, engine):
+    def __init__(self, engine, background=True):
+        """``background=False`` skips the worker and scheduler threads, for
+        callers (the CLI, tests) that run syncs themselves with ``run()``."""
         self.engine = engine
         self.ws = engine.workspace
         self.cfg_path = os.path.join(self.ws, "connections.json")
@@ -84,8 +86,9 @@ class Pipeline:
                 "connection VARCHAR, mode VARCHAR, trigger VARCHAR, started_at TIMESTAMPTZ, finished_at TIMESTAMPTZ, "
                 "status VARCHAR, rows_read BIGINT, rows_written BIGINT, table_rows BIGINT, cursor_from VARCHAR, "
                 "cursor_to VARCHAR, message VARCHAR)" % OPS)
-        threading.Thread(target=self._worker, name="redata-sync", daemon=True).start()
-        threading.Thread(target=self._scheduler, name="redata-scheduler", daemon=True).start()
+        if background:
+            threading.Thread(target=self._worker, name="redata-sync", daemon=True).start()
+            threading.Thread(target=self._scheduler, name="redata-scheduler", daemon=True).start()
 
     # ------------------------------------------------------------------ storage
     def _load(self):
@@ -456,13 +459,29 @@ class Pipeline:
             except duckdb.Error:
                 pass
 
+    # ---- schema drift ---------------------------------------------------
+    # One policy for every write into an existing staging table, whether the
+    # new rows are a later batch of the same run or a later run:
+    #   * a column the table does not have yet is added;
+    #   * an integer column about to receive fractions becomes DOUBLE;
+    #   * a column about to receive a value its type cannot hold becomes VARCHAR.
+    # Columns that disappear at the source stay, and are NULL in newer rows.
+
+    def _add_missing_columns(self, table_name, incoming):
+        have = {c.lower() for c, _ in self._cols(table_name)}
+        for c, t in incoming:
+            if c.lower() not in have:
+                self.cur.execute("ALTER TABLE %s ADD COLUMN %s %s"
+                                 % (self._tbl(table_name), qi(c), "VARCHAR" if t == '"NULL"' else t))
+                have.add(c.lower())
+
     def _widen_for_batch(self, table_name, batch):
         """Widen integer columns that are about to receive fractional values.
 
         DuckDB casts a DOUBLE into an existing BIGINT column silently, rounding it
         (2.75 becomes 3). A cast that cannot fail never raises ConversionException,
-        so the widening in _write_arrow's retry never fired for numeric data and
-        incremental syncs quietly lost the decimal part. Widen before the INSERT.
+        so the widen-to-text retry never fires for numeric data and the decimal
+        part would be lost quietly. Widen before the INSERT.
         """
         have = {c.lower(): t for c, t in self._cols(table_name)}
         for c, t in batch:
@@ -473,6 +492,24 @@ class Pipeline:
                              % (self._tbl(table_name), qi(c)))
             have[c.lower()] = "DOUBLE"
 
+    def _widen_to_text(self, table_name, source, incoming):
+        """Turn into VARCHAR the columns whose incoming values do not fit.
+
+        ``source`` is the relation holding the new rows. Only columns with a
+        value that fails the cast are changed, so one bad column does not turn
+        every column whose type merely differs into text.
+        """
+        have = {c.lower(): t for c, t in self._cols(table_name)}
+        for c, t in incoming:
+            current = have.get(c.lower())
+            if not current or current == t or current == "VARCHAR":
+                continue
+            bad = self.cur.execute(
+                "SELECT count(*) FROM %s WHERE %s IS NOT NULL AND TRY_CAST(%s AS %s) IS NULL"
+                % (source, qi(c), qi(c), current)).fetchone()[0]
+            if bad:
+                self.cur.execute("ALTER TABLE %s ALTER COLUMN %s TYPE VARCHAR" % (self._tbl(table_name), qi(c)))
+
     def _write_arrow(self, table_name, arrow_tbl, created):
         """Append an Arrow table to a staging table, creating it and adding new columns as needed."""
         reg = "__redata_batch_%s" % uuid.uuid4().hex[:8]
@@ -482,23 +519,16 @@ class Pipeline:
                 self.cur.execute("CREATE TABLE %s AS SELECT *, current_timestamp AS %s FROM %s"
                                  % (self._tbl(table_name), qi(LOADED_AT), reg))
                 return
-            have = {c.lower(): t for c, t in self._cols(table_name)}
             batch = [(r[0], r[1]) for r in self.cur.execute("DESCRIBE SELECT * FROM %s" % reg).fetchall()]
-            for c, t in batch:
-                if c.lower() not in have:
-                    self.cur.execute("ALTER TABLE %s ADD COLUMN %s %s" % (self._tbl(table_name), qi(c), "VARCHAR" if t == '"NULL"' else t))
+            self._add_missing_columns(table_name, batch)
             self._widen_for_batch(table_name, batch)
+            insert = ("INSERT INTO %s BY NAME SELECT *, current_timestamp AS %s FROM %s"
+                      % (self._tbl(table_name), qi(LOADED_AT), reg))
             try:
-                self.cur.execute("INSERT INTO %s BY NAME SELECT *, current_timestamp AS %s FROM %s"
-                                 % (self._tbl(table_name), qi(LOADED_AT), reg))
+                self.cur.execute(insert)
             except duckdb.ConversionException:
-                # a value that does not fit the column's type: widen those columns to text and retry
-                have = {c.lower(): t for c, t in self._cols(table_name)}
-                for c, t in batch:
-                    if have.get(c.lower()) != t and have.get(c.lower()) != "VARCHAR":
-                        self.cur.execute("ALTER TABLE %s ALTER COLUMN %s TYPE VARCHAR" % (self._tbl(table_name), qi(c)))
-                self.cur.execute("INSERT INTO %s BY NAME SELECT *, current_timestamp AS %s FROM %s"
-                                 % (self._tbl(table_name), qi(LOADED_AT), reg))
+                self._widen_to_text(table_name, reg, batch)
+                self.cur.execute(insert)
         finally:
             self.cur.unregister(reg)
 
@@ -520,13 +550,11 @@ class Pipeline:
         if not self._exists(target):
             self._swap_in(inc, target)
             return
-        # new columns at the source appear in staging too
-        have = {c.lower() for c, _ in self._cols(target)}
-        for c, t in self._cols(inc):
-            if c.lower() not in have:
-                self.cur.execute("ALTER TABLE %s ADD COLUMN %s %s" % (self._tbl(target), qi(c), t))
+        incoming = self._cols(inc)
+        self._add_missing_columns(target, incoming)
+        self._widen_for_batch(target, incoming)
         if s["mode"] == "upsert":
-            cols = {c.lower(): c for c, _ in self._cols(inc)}
+            cols = {c.lower(): c for c, _ in incoming}
             keys = []
             for k in s["keys"]:
                 if k.lower() not in cols:
@@ -534,22 +562,33 @@ class Pipeline:
                 keys.append(cols[k.lower()])
             order = qi(cols.get(str(s["cursor"]).lower(), keys[0])) if s.get("cursor") else qi(keys[0])
             part = ", ".join(qi(k) for k in keys)
+            # keep one row per key from the batch: the newest by cursor
             self.cur.execute(
                 "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s QUALIFY row_number() OVER (PARTITION BY %s ORDER BY %s DESC) = 1"
                 % (self._tbl(inc + "_d"), self._tbl(inc), part, order))
             cond = " AND ".join("t.%s IS NOT DISTINCT FROM d.%s" % (qi(k), qi(k)) for k in keys)
-            self.cur.execute("BEGIN TRANSACTION")
-            try:
-                self.cur.execute("DELETE FROM %s t USING %s d WHERE %s" % (self._tbl(target), self._tbl(inc + "_d"), cond))
-                self.cur.execute("INSERT INTO %s BY NAME SELECT * FROM %s" % (self._tbl(target), self._tbl(inc + "_d")))
-                self.cur.execute("COMMIT")
-            except Exception:
-                self.cur.execute("ROLLBACK")
-                raise
-            finally:
-                self.cur.execute("DROP TABLE IF EXISTS %s" % self._tbl(inc + "_d"))
+
+            def write():
+                # delete-then-insert in one transaction, so a failure leaves the target as it was
+                self.cur.execute("BEGIN TRANSACTION")
+                try:
+                    self.cur.execute("DELETE FROM %s t USING %s d WHERE %s" % (self._tbl(target), self._tbl(inc + "_d"), cond))
+                    self.cur.execute("INSERT INTO %s BY NAME SELECT * FROM %s" % (self._tbl(target), self._tbl(inc + "_d")))
+                    self.cur.execute("COMMIT")
+                except Exception:
+                    self.cur.execute("ROLLBACK")
+                    raise
         else:
-            self.cur.execute("INSERT INTO %s BY NAME SELECT * FROM %s" % (self._tbl(target), self._tbl(inc)))
+            def write():
+                self.cur.execute("INSERT INTO %s BY NAME SELECT * FROM %s" % (self._tbl(target), self._tbl(inc)))
+        try:
+            try:
+                write()
+            except duckdb.ConversionException:
+                self._widen_to_text(target, self._tbl(inc), incoming)
+                write()
+        finally:
+            self.cur.execute("DROP TABLE IF EXISTS %s" % self._tbl(inc + "_d"))
         self.cur.execute("DROP TABLE IF EXISTS %s" % self._tbl(inc))
 
     # ------------------------------------------------------------ row sources
