@@ -1,5 +1,62 @@
 # ReData
 
+**Keeping a copy of a database table, file drop or API current means tracking where the last sync stopped and surviving schema changes; ReData does both and lands the data in DuckDB.**
+
+## Architecture
+
+```mermaid
+flowchart LR
+    S[Postgres, MySQL, SQL Server, Snowflake, SQLite, files, S3, URLs, REST] --> C[Connectors]
+    C -->|Arrow batches of 50,000 rows| P[Pipeline]
+    P --> M{Sync mode}
+    M -->|full| W[Build beside, swap in]
+    M -->|append| W2[Insert rows past the cursor]
+    M -->|upsert| W3[Replace by key in one transaction]
+    P --> D[Schema drift: add columns, widen types]
+    W --> T[(DuckDB staging tables)]
+    W2 --> T
+    W3 --> T
+    P --> ST[Saved state: cursor or file list]
+    P --> RL[(Run log: redata_ops.sync_runs)]
+    CLI[redata CLI] --> P
+    SCH[Scheduler + worker queue] --> P
+    API[FastAPI on 127.0.0.1] --> P
+    API --> T
+    UI[Browser workspace] --> API
+```
+
+## Quickstart
+
+Python 3.9 or newer. This syncs a SQLite table; swap the connection for Postgres, MySQL, SQL Server, Snowflake, S3 or a REST API.
+
+```bash
+git clone https://github.com/theraghavraman/redata.git
+```
+
+```bash
+python -m pip install ./redata
+```
+
+```bash
+redata connection add --type sqlite --name shop --set path=/path/to/shop.db
+```
+
+```bash
+redata stream add --connection shop --source orders --mode upsert --cursor updated_at --keys order_id --target orders
+```
+
+```bash
+redata sync orders
+```
+
+```bash
+redata sql "SELECT count(*) FROM staging.orders"
+```
+
+Run `redata sync orders` again later and it reads only what changed. `redata serve` starts the engine with the browser page and the scheduler.
+
+---
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23314956.svg)](https://doi.org/10.5281/zenodo.23314956)
 
 **ReData is a small data-ingestion engine with an analytics workspace on top.** The engine copies tables, queries, files and API responses into [DuckDB](https://duckdb.org) staging tables, keeps them current with incremental syncs, and remembers where each sync stopped. It runs from the command line or behind a browser page that profiles, cleans, queries and charts the data.
