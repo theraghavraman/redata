@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "engine"))
 import pyarrow as pa  # noqa: E402
 
 from redata_engine import Engine, UserError  # noqa: E402
-import pipeline as P  # noqa: E402
+from redata import pipeline as P  # noqa: E402
 
 
 class EngineRegressionTests(unittest.TestCase):

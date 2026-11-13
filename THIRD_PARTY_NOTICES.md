@@ -24,6 +24,8 @@ Licensed under the Apache License, Version 2.0. You may obtain a copy at https:/
 
 ## Python dependencies declared in `engine/requirements.txt`
 
+`pyproject.toml` declares the same packages: the first seven as the core install and the database, warehouse and S3 drivers as optional extras.
+
 The file currently declares these direct packages with minimum-version constraints. Confirm the license against the exact installed version and its distribution metadata when producing a release.
 
 | Package | Declared requirement | Commonly published license identifier / family | Upstream metadata |
@@ -32,6 +34,9 @@ The file currently declares these direct packages with minimum-version constrain
 | openpyxl | `openpyxl>=3.1.0` | MIT | https://foss.heptapod.net/openpyxl/openpyxl |
 | xlrd | `xlrd>=2.0.1` | BSD-3-Clause | https://github.com/python-excel/xlrd |
 | PyArrow | `pyarrow>=14.0` | Apache-2.0 | https://github.com/apache/arrow |
+| pytz | `pytz>=2023.3` | MIT | https://github.com/stub42/pytz |
+| FastAPI | `fastapi>=0.110` | MIT (brings Starlette, BSD-3-Clause, and Pydantic, MIT) | https://github.com/fastapi/fastapi |
+| Uvicorn | `uvicorn>=0.29` | BSD-3-Clause | https://github.com/encode/uvicorn |
 | Psycopg (binary extra) | `psycopg[binary]>=3.1` | LGPL-3.0 (review packaging and binary distribution terms for the selected extra/version) | https://github.com/psycopg/psycopg |
 | PyMySQL | `PyMySQL>=1.1` | MIT | https://github.com/PyMySQL/PyMySQL |
 | pymssql | `pymssql>=2.3` | LGPL-2.1-or-later (verify selected release and bundled FreeTDS details) | https://github.com/pymssql/pymssql |

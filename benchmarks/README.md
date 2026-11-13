@@ -1,6 +1,29 @@
-# ReData benchmark assets
+# ReData benchmarks
 
-This directory contains reproducible synthetic-data tooling. It does **not** contain verified performance results.
+This directory holds the benchmark scripts, the raw result of every recorded run, and a results page built from them.
+
+| What | Where |
+| --- | --- |
+| Results, as tables | [RESULTS.md](RESULTS.md) |
+| Raw result of each run (JSON) | [results/](results/) |
+| Sync benchmark: full, append and upsert from SQLite into staging | `run_sync_benchmark.py` |
+| Engine benchmark: CSV import, profile and SQL over the HTTP API | `run_engine_smoke.py` |
+| Synthetic CSV generator | `generate_dataset.py` |
+| Rebuild RESULTS.md from results/ | `summarize_results.py` |
+
+The results are measurements of specific machines: a GitHub-hosted runner for the engine runs and one laptop for the sync runs. Each one passed its correctness checks. They are not a claim about other hardware, and they do not reproduce the older timings quoted from the v0.1.0 README. [RESULTS.md](RESULTS.md) lists what is and is not covered.
+
+## Sync benchmark
+
+`run_sync_benchmark.py` builds a SQLite table, then runs the real pipeline against it: a full load, an append run after new rows arrive, an append run with nothing new, and an upsert run after rows are added and changed. It fails unless row counts and `sum(amount)` match the source, append read only the new rows, and upsert left exactly one row per key.
+
+```bash
+python -m pip install .
+python benchmarks/run_sync_benchmark.py --rows 1000000 --output benchmarks/results/local-sync-1m-$(git rev-parse --short HEAD).json
+python benchmarks/summarize_results.py
+```
+
+Commit the code first, so the result records the commit it measured. The source is a local file, so there is no network time in the result.
 
 ## Generate a dataset
 
@@ -55,10 +78,10 @@ The GitHub Actions workflow at `.github/workflows/benchmark-generator-tests.yml`
 
 The `run_engine_smoke.py` script starts the actual ReData local engine in an isolated workspace, creates a deterministic CSV, stages and imports it through the HTTP API, checks metadata and paginated rows, runs repeated SQL aggregation queries against an independent expected sum, and verifies that an unauthenticated status request is rejected.
 
-Run locally after installing DuckDB:
+Run locally after installing the engine:
 
 ```bash
-python -m pip install "duckdb>=1.1.0"
+python -m pip install .
 python benchmarks/run_engine_smoke.py --rows 100000 --columns 10 --repeats 5 --output benchmark-results/engine-smoke.json
 ```
 
@@ -67,7 +90,7 @@ The JSON output records the source commit when supplied by CI, Python/platform/D
 
 ## Preserved CI results
 
-Two successful GitHub-hosted local-engine smoke runs have their raw JSON committed for long-term review:
+Six successful GitHub-hosted local-engine smoke runs have their raw JSON committed for long-term review. They ran before the engine moved from `http.server` to FastAPI:
 
 - [100,000 rows](results/ci-smoke-100k-8d73fa1.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175393938)
 - [1,000,000 rows × 10 columns, single import](results/ci-smoke-1m-32fe7af.json) — [workflow run](https://github.com/theraghavraman/redata/actions/runs/38175438341)

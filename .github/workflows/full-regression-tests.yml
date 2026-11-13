@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -22,7 +23,7 @@ jobs:
           python-version: "3.12"
       - name: Install test dependencies
         run: |
-          python3 -m pip install --disable-pip-version-check pytest duckdb openpyxl xlrd pyarrow playwright
+          python3 -m pip install --disable-pip-version-check ".[test]" playwright
           python3 -m playwright install --with-deps chromium
       - name: Run full pytest suite
         run: python3 -m pytest tests/ -q

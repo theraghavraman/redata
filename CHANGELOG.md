@@ -4,7 +4,28 @@ All notable changes to ReData are documented here.
 
 ## [Unreleased]
 
-Fixes from a review of the engine and the browser app.
+### Engine 1.2.0: package, command line, FastAPI
+
+#### Added
+- The engine is now the `redata` Python package (`engine/redata`) with a `pyproject.toml`. `python -m pip install .` installs it with the SQLite, file, URL and REST connectors; database, warehouse and S3 drivers are optional extras (`[postgres]`, `[mysql]`, `[sqlserver]`, `[snowflake]`, `[s3]`, `[all]`).
+- A `redata` command that works without the browser: `serve`, `connectors`, `connection add|list|test|remove`, `stream add|list|reset|remove`, `sync`, `runs`, `tables` and `sql`. `redata sync --all` exits 1 if any sync fails, so it can run from cron.
+- `benchmarks/run_sync_benchmark.py` measures full, append and upsert syncs through the real pipeline and checks each result against the source. `benchmarks/RESULTS.md` is generated from the committed result files by `benchmarks/summarize_results.py`, and a test fails if the two disagree.
+- Tests for sync modes, saved state, schema drift, the HTTP API, the CLI and the engine's statistics. The engine suite grew from 27 tests to 170.
+
+#### Changed
+- The HTTP API is a FastAPI app served by Uvicorn instead of a hand-written `http.server` handler. Routes, the Host and token checks, the `{"error": ...}` shape and the response headers are unchanged, and request bodies now have typed models. The OpenAPI schema is served at `/api/openapi.json` behind the engine token. `fastapi` and `uvicorn` are new dependencies; the launch scripts install them on the next start.
+- The 800-line `Engine` class is split by concern into `ingest`, `profile`, `analysis`, `transform` and `sqllab`, with `formula`, `sqlguard` and `util` as plain modules. `engine/redata_engine.py` remains as the launcher and still exports `Engine` and `UserError`.
+- The README leads with sync modes, saved state and schema drift, and its performance section quotes only recorded runs.
+
+#### Fixed
+- Schema drift between two sync runs is handled the same way as drift between two batches of one run. Previously a later run that brought text into a numeric column failed the sync with a conversion error, because only the within-run path widened columns.
+- Staging columns are widened before any value would be changed by a cast, not only when an insert fails. DuckDB casts on `INSERT` without an error whenever the cast cannot fail, so a timestamp arriving in a `DATE` column lost its time, a decimal with more places was rounded, an integer arriving in a `BOOLEAN` column became `true`, and between runs a fraction arriving in an integer column was rounded. The column now takes the incoming type when the stored values survive that, otherwise `VARCHAR`.
+- When one column needs widening to text, only that column is changed. Every column whose type merely differed from the batch used to be turned into text along with it.
+- Starting a second engine on a workspace that is already open no longer deletes the first engine's staged uploads and exports. The DuckDB file is opened, and its lock taken, before leftover folders are cleared.
+- `pytz` is declared as a dependency. DuckDB needs it to return `TIMESTAMPTZ` values (the sync history and `_redata_loaded_at`), and it was only present when the Snowflake driver happened to install it.
+- A static file that cannot be read returns 404 instead of an unhandled error.
+
+### Fixes from a review of the engine and the browser app
 
 ### Fixed
 - JSON and NDJSON imports no longer reserve a 2 GiB buffer. `_json_source` set `maximum_object_size=1073741824`, which DuckDB honours by allocating about twice that up front, so a three-line file failed with `OutOfMemoryException` on any machine whose DuckDB memory limit was under 2 GiB. The folder-sync path never set it.
