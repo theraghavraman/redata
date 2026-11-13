@@ -6,6 +6,7 @@ on:
       - "benchmarks/**"
       - "engine/**"
       - "tests/**"
+      - "pyproject.toml"
       - "index.html"
       - "THIRD_PARTY_NOTICES.md"
       - "scripts/audit_browser_dependencies.py"
@@ -20,6 +21,7 @@ on:
       - "benchmarks/**"
       - "engine/**"
       - "tests/**"
+      - "pyproject.toml"
       - "index.html"
       - "THIRD_PARTY_NOTICES.md"
       - "scripts/audit_browser_dependencies.py"
@@ -45,7 +47,9 @@ jobs:
         with:
           python-version: "3.x"
       - name: Compile generator and tests
-        run: python -m py_compile benchmarks/generate_dataset.py tests/test_generate_dataset.py benchmarks/run_engine_smoke.py
+        run: python -m py_compile benchmarks/generate_dataset.py tests/test_generate_dataset.py benchmarks/run_engine_smoke.py benchmarks/run_sync_benchmark.py benchmarks/summarize_results.py
+      - name: Check the results page matches the result files
+        run: python benchmarks/summarize_results.py --check
       - name: Run generator regression tests
         run: python -m unittest discover -s tests -p "test_generate_dataset.py" -v
 
@@ -58,10 +62,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Install local-engine dependency
-        run: python -m pip install --disable-pip-version-check "duckdb>=1.1.0" "openpyxl>=3.1.0"
+      - name: Install the engine package
+        run: python -m pip install --disable-pip-version-check .
       - name: Compile engine correctness tests
-        run: python -m py_compile engine/redata_engine.py tests/test_engine_correctness.py
+        run: python -m compileall -q engine/redata engine/redata_engine.py tests/test_engine_correctness.py
       - name: Run local-engine correctness fixtures
         run: python -m unittest discover -s tests -p "test_engine_correctness.py" -v
 
@@ -75,8 +79,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Install local-engine dependency
-        run: python -m pip install --disable-pip-version-check "duckdb>=1.1.0"
+      - name: Install the engine package
+        run: python -m pip install --disable-pip-version-check .
       - name: Run large local-engine benchmark (10 million rows, 10 columns)
         env:
           GITHUB_SHA: ${{ github.sha }}
@@ -99,8 +103,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Install local-engine dependency
-        run: python -m pip install --disable-pip-version-check "duckdb>=1.1.0"
+      - name: Install the engine package
+        run: python -m pip install --disable-pip-version-check .
       - name: Run routine 1M local-engine smoke benchmark with repeated imports
         env:
           GITHUB_SHA: ${{ github.sha }}

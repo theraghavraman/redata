@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - "engine/requirements.txt"
+      - "pyproject.toml"
       - "index.html"
       - "THIRD_PARTY_NOTICES.md"
       - ".github/workflows/dependency-audit.yml"
@@ -20,6 +21,7 @@ on:
   pull_request:
     paths:
       - "engine/requirements.txt"
+      - "pyproject.toml"
       - "index.html"
       - "THIRD_PARTY_NOTICES.md"
       - ".github/workflows/dependency-audit.yml"

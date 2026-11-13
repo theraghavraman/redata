@@ -8,3 +8,10 @@ __pycache__/
 .venv-audit/
 licenses-resolved.json
 sbom.cdx.json
+
+# Packaging and local benchmark output
+build/
+dist/
+*.egg-info/
+benchmark-results/
+.pytest_cache/

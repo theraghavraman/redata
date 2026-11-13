@@ -34,21 +34,9 @@ OPS = "redata_ops"
 LOADED_AT = "_redata_loaded_at"
 INTERVALS = [0, 5, 15, 30, 60, 180, 360, 720, 1440]
 
-INT_TYPES = ("TINYINT", "SMALLINT", "INTEGER", "BIGINT", "HUGEINT",
-             "UTINYINT", "USMALLINT", "UINTEGER", "UBIGINT", "UHUGEINT")
-FLOAT_TYPES = ("FLOAT", "DOUBLE", "REAL")
-
 
 def qi(name):
     return '"' + str(name).replace('"', '""') + '"'
-
-
-def _is_int_type(t):
-    return str(t).upper().startswith(INT_TYPES)
-
-
-def _is_float_type(t):
-    return str(t).upper().startswith(FLOAT_TYPES)
 
 
 def now_iso():
@@ -463,9 +451,11 @@ class Pipeline:
     # One policy for every write into an existing staging table, whether the
     # new rows are a later batch of the same run or a later run:
     #   * a column the table does not have yet is added;
-    #   * an integer column about to receive fractions becomes DOUBLE;
-    #   * a column about to receive a value its type cannot hold becomes VARCHAR.
+    #   * a column whose type would change or reject an incoming value is
+    #     widened first, to the incoming type when the stored values survive
+    #     that, otherwise to VARCHAR.
     # Columns that disappear at the source stay, and are NULL in newer rows.
+    # Types only widen; nothing is ever narrowed or dropped.
 
     def _add_missing_columns(self, table_name, incoming):
         have = {c.lower() for c, _ in self._cols(table_name)}
@@ -475,40 +465,35 @@ class Pipeline:
                                  % (self._tbl(table_name), qi(c), "VARCHAR" if t == '"NULL"' else t))
                 have.add(c.lower())
 
-    def _widen_for_batch(self, table_name, batch):
-        """Widen integer columns that are about to receive fractional values.
+    def _changed_by_cast(self, relation, column, to_type, back_type):
+        """How many values of ``column`` do not survive a cast to ``to_type`` and back."""
+        col = qi(column)
+        return self.cur.execute(
+            "SELECT count(*) FROM %s WHERE %s IS NOT NULL AND TRY_CAST(TRY_CAST(%s AS %s) AS %s) IS DISTINCT FROM %s"
+            % (relation, col, col, to_type, back_type, col)).fetchone()[0]
 
-        DuckDB casts a DOUBLE into an existing BIGINT column silently, rounding it
-        (2.75 becomes 3). A cast that cannot fail never raises ConversionException,
-        so the widen-to-text retry never fires for numeric data and the decimal
-        part would be lost quietly. Widen before the INSERT.
+    def _fit_columns(self, table_name, source, incoming):
+        """Widen the columns that could not hold the incoming values unchanged.
+
+        ``source`` is the relation holding the new rows. DuckDB casts on INSERT
+        without complaint whenever the cast cannot fail: 2.75 into a BIGINT
+        column becomes 3, a timestamp into a DATE column loses its time, 5 into
+        a BOOLEAN column becomes true. So a failed INSERT is not a usable
+        signal. Instead each incoming value is cast to the column's type and
+        back; if any value comes back different, or not at all, the column is
+        widened before the INSERT.
         """
-        have = {c.lower(): t for c, t in self._cols(table_name)}
-        for c, t in batch:
-            current = have.get(c.lower())
-            if not current or not _is_int_type(current) or not _is_float_type(t):
+        have = {c.lower(): (c, t) for c, t in self._cols(table_name)}
+        for c, incoming_type in incoming:
+            name, current = have.get(c.lower(), (None, None))
+            if not current or current in (incoming_type, "VARCHAR") or incoming_type == '"NULL"':
                 continue
-            self.cur.execute("ALTER TABLE %s ALTER COLUMN %s TYPE DOUBLE"
-                             % (self._tbl(table_name), qi(c)))
-            have[c.lower()] = "DOUBLE"
-
-    def _widen_to_text(self, table_name, source, incoming):
-        """Turn into VARCHAR the columns whose incoming values do not fit.
-
-        ``source`` is the relation holding the new rows. Only columns with a
-        value that fails the cast are changed, so one bad column does not turn
-        every column whose type merely differs into text.
-        """
-        have = {c.lower(): t for c, t in self._cols(table_name)}
-        for c, t in incoming:
-            current = have.get(c.lower())
-            if not current or current == t or current == "VARCHAR":
+            if not self._changed_by_cast(source, c, current, incoming_type):
                 continue
-            bad = self.cur.execute(
-                "SELECT count(*) FROM %s WHERE %s IS NOT NULL AND TRY_CAST(%s AS %s) IS NULL"
-                % (source, qi(c), qi(c), current)).fetchone()[0]
-            if bad:
-                self.cur.execute("ALTER TABLE %s ALTER COLUMN %s TYPE VARCHAR" % (self._tbl(table_name), qi(c)))
+            # the incoming type is the better home if everything stored fits it too
+            stored_fits = not self._changed_by_cast(self._tbl(table_name), name, incoming_type, current)
+            self.cur.execute("ALTER TABLE %s ALTER COLUMN %s TYPE %s"
+                             % (self._tbl(table_name), qi(name), incoming_type if stored_fits else "VARCHAR"))
 
     def _write_arrow(self, table_name, arrow_tbl, created):
         """Append an Arrow table to a staging table, creating it and adding new columns as needed."""
@@ -521,14 +506,9 @@ class Pipeline:
                 return
             batch = [(r[0], r[1]) for r in self.cur.execute("DESCRIBE SELECT * FROM %s" % reg).fetchall()]
             self._add_missing_columns(table_name, batch)
-            self._widen_for_batch(table_name, batch)
-            insert = ("INSERT INTO %s BY NAME SELECT *, current_timestamp AS %s FROM %s"
-                      % (self._tbl(table_name), qi(LOADED_AT), reg))
-            try:
-                self.cur.execute(insert)
-            except duckdb.ConversionException:
-                self._widen_to_text(table_name, reg, batch)
-                self.cur.execute(insert)
+            self._fit_columns(table_name, reg, batch)
+            self.cur.execute("INSERT INTO %s BY NAME SELECT *, current_timestamp AS %s FROM %s"
+                             % (self._tbl(table_name), qi(LOADED_AT), reg))
         finally:
             self.cur.unregister(reg)
 
@@ -552,7 +532,7 @@ class Pipeline:
             return
         incoming = self._cols(inc)
         self._add_missing_columns(target, incoming)
-        self._widen_for_batch(target, incoming)
+        self._fit_columns(target, self._tbl(inc), incoming)
         if s["mode"] == "upsert":
             cols = {c.lower(): c for c, _ in incoming}
             keys = []
@@ -582,11 +562,7 @@ class Pipeline:
             def write():
                 self.cur.execute("INSERT INTO %s BY NAME SELECT * FROM %s" % (self._tbl(target), self._tbl(inc)))
         try:
-            try:
-                write()
-            except duckdb.ConversionException:
-                self._widen_to_text(target, self._tbl(inc), incoming)
-                write()
+            write()
         finally:
             self.cur.execute("DROP TABLE IF EXISTS %s" % self._tbl(inc + "_d"))
         self.cur.execute("DROP TABLE IF EXISTS %s" % self._tbl(inc))

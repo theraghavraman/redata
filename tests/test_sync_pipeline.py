@@ -362,6 +362,48 @@ class SchemaDriftTests(SyncCase):
         kinds = self.columns()
         self.assertEqual((kinds["id"], kinds["amount"], kinds["status"]), ("BIGINT", "VARCHAR", "VARCHAR"))
 
+    def test_casts_that_would_silently_change_values_widen_instead(self) -> None:
+        """DuckDB performs each of these casts on INSERT without an error."""
+        import datetime
+        import decimal
+
+        import pyarrow as pa
+        cases = {
+            # name: (first batch, later batch, expected type, expected values)
+            "ts_into_date": (pa.array([datetime.date(2026, 1, 1)]), pa.array([datetime.datetime(2026, 1, 2, 13, 45)]),
+                             "TIMESTAMP", [datetime.datetime(2026, 1, 1), datetime.datetime(2026, 1, 2, 13, 45)]),
+            "int_into_bool": (pa.array([True]), pa.array([5], type=pa.int64()), "BIGINT", [1, 5]),
+            "big_into_int32": (pa.array([1], type=pa.int32()), pa.array([2 ** 40], type=pa.int64()), "BIGINT", [1, 2 ** 40]),
+            "more_decimals": (pa.array([decimal.Decimal("1.50")]), pa.array([decimal.Decimal("2.12345")]),
+                              "DECIMAL(6,5)", [decimal.Decimal("1.50000"), decimal.Decimal("2.12345")]),
+            "leading_zeros": (pa.array([7], type=pa.int64()), pa.array(["007"]), "VARCHAR", ["7", "007"]),
+        }
+        for name, (first, later, kind, values) in cases.items():
+            self.pipe._write_arrow(name, pa.table({"n": [1], "v": first}), False)
+            self.pipe._write_arrow(name, pa.table({"n": [2], "v": later}), True)
+            self.assertEqual(self.columns(name)["v"], kind, name)
+            self.assertEqual([r[0] for r in self.staged("SELECT v FROM staging.%s ORDER BY n" % name)], values, name)
+
+    def test_values_that_fit_do_not_change_the_column_type(self) -> None:
+        import pyarrow as pa
+        cases = {
+            "int_into_double": (pa.array([1.5]), pa.array([7], type=pa.int64()), "DOUBLE", [1.5, 7.0]),
+            "digits_into_int": (pa.array([7], type=pa.int64()), pa.array(["8"]), "BIGINT", [7, 8]),
+            "small_into_big": (pa.array([2 ** 40], type=pa.int64()), pa.array([3], type=pa.int32()), "BIGINT", [2 ** 40, 3]),
+        }
+        for name, (first, later, kind, values) in cases.items():
+            self.pipe._write_arrow(name, pa.table({"n": [1], "v": first}), False)
+            self.pipe._write_arrow(name, pa.table({"n": [2], "v": later}), True)
+            self.assertEqual(self.columns(name)["v"], kind, name)
+            self.assertEqual([r[0] for r in self.staged("SELECT v FROM staging.%s ORDER BY n" % name)], values, name)
+
+    def test_when_stored_values_do_not_fit_the_incoming_type_the_column_becomes_text(self) -> None:
+        import pyarrow as pa
+        self.pipe._write_arrow("mixed", pa.table({"n": [1], "v": [1.5]}), False)
+        self.pipe._write_arrow("mixed", pa.table({"n": [2], "v": pa.array([2 ** 60 + 1], type=pa.int64())}), True)
+        self.assertEqual(self.columns("mixed")["v"], "VARCHAR")
+        self.assertEqual(self.staged("SELECT v FROM staging.mixed ORDER BY n"), [("1.5",), (str(2 ** 60 + 1),)])
+
     def test_drift_between_batches_of_one_run(self) -> None:
         import pyarrow as pa
         self.pipe._write_arrow("t", pa.table({"id": [1, 2], "v": [10, 20]}), False)
