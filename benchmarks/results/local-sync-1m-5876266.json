@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "benchmark_type": "ReData sync benchmark (SQLite source, local pipeline)",
+  "status": "passed",
+  "note": "Environment-specific measurement of one run per step. The source is a local SQLite file, so there is no network time; not a capacity claim for remote databases.",
+  "source_commit": "5876266c31a8af22978bc5f61f8b8b127f38815a",
+  "engine_version": "1.2.0",
+  "duckdb_version": "2.0.0",
+  "pyarrow_version": "26.0.1",
+  "python_version": "3.14.8 (v3.14.8:8e6e75d9102, Sep 30 2026, 14:34:30) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "cpu_count": 8,
+  "cpu_model": "Apple M2",
+  "ram_gib": 8.0,
+  "duckdb_threads": 2,
+  "rows": 1000000,
+  "columns": 6,
+  "seed": 20261012,
+  "delta_rows": 100000,
+  "changed_rows": 50000,
+  "source_build_seconds": 2.365,
+  "full_first_load": {
+    "seconds": 1.64,
+    "rows_read": 1000000,
+    "rows_per_second": 609760,
+    "table_rows": 1000000
+  },
+  "full_reload": {
+    "seconds": 1.77,
+    "rows_read": 1100000,
+    "rows_per_second": 621631,
+    "table_rows": 1100000
+  },
+  "append_first_load": {
+    "seconds": 1.546,
+    "rows_read": 1000000,
+    "rows_per_second": 646630,
+    "table_rows": 1000000
+  },
+  "append_incremental": {
+    "seconds": 0.211,
+    "rows_read": 100000,
+    "rows_per_second": 473999,
+    "table_rows": 1100000
+  },
+  "append_nothing_new": {
+    "seconds": 0.003,
+    "rows_read": 0,
+    "rows_per_second": 0,
+    "table_rows": 1100000
+  },
+  "upsert_first_load": {
+    "seconds": 1.542,
+    "rows_read": 1000000,
+    "rows_per_second": 648448,
+    "table_rows": 1000000
+  },
+  "upsert_incremental": {
+    "seconds": 0.364,
+    "rows_read": 150001,
+    "rows_per_second": 412558,
+    "table_rows": 1100000
+  },
+  "peak_rss_mib": 279.5,
+  "memory_measurement_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss of the benchmark process, which also built the SQLite source",
+  "correctness": {
+    "full_matches_source": true,
+    "append_read_only_new_rows": true,
+    "append_row_count": true,
+    "upsert_read_new_changed_and_boundary_rows": true,
+    "upsert_matches_source": true,
+    "upsert_keys_unique": true,
+    "noop_reads_nothing": true,
+    "full_rerun_matches_source": true
+  }
+}
