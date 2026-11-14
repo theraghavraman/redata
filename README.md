@@ -57,7 +57,7 @@ Run `redata sync orders` again later and it reads only what changed. `redata ser
 
 ---
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23314956.svg)](https://doi.org/10.5281/zenodo.23314956)
+[![Tests](https://github.com/theraghavraman/redata/actions/workflows/full-regression-tests.yml/badge.svg)](https://github.com/theraghavraman/redata/actions/workflows/full-regression-tests.yml) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23314956.svg)](https://doi.org/10.5281/zenodo.23314956)
 
 **ReData is a small data-ingestion engine with an analytics workspace on top.** The engine copies tables, queries, files and API responses into [DuckDB](https://duckdb.org) staging tables, keeps them current with incremental syncs, and remembers where each sync stopped. It runs from the command line or behind a browser page that profiles, cleans, queries and charts the data.
 
@@ -199,6 +199,20 @@ Under `redata serve`, a sync can run every 5, 15 or 30 minutes, every 1, 3, 6 or
 
 In the browser page, **Analyse** makes a staging table the active dataset and keeps it live: after each successful sync the open view refreshes. Staging tables can be joined in the SQL lab as `staging.table_name`, and the history is `redata_ops.sync_runs`.
 
+## When to use something else
+
+ReData is a single-machine tool: one process, one DuckDB file, the sources listed below. Other tools are a better fit in these cases.
+
+| If you need | Use | Why |
+| --- | --- | --- |
+| Many SaaS sources (Salesforce, HubSpot, Stripe, ad platforms) | [Airbyte](https://airbyte.com) or [dlt](https://dlthub.com) | Both ship far more connectors than ReData's nine |
+| A pipeline library inside your own Python code, loading to a warehouse | [dlt](https://dlthub.com) | It is built to be imported and orchestrated; ReData is a command and a server |
+| A managed or team-shared ingestion service, with a UI, retries and alerting | [Airbyte](https://airbyte.com) | It runs as a service for many users; ReData runs on one laptop |
+| Loads into Snowflake, BigQuery or Postgres as the destination | dlt or Airbyte | ReData only writes to DuckDB |
+| Change data capture from a database log, including deletes | [Debezium](https://debezium.io) or Airbyte's CDC sources | ReData reads by cursor, so it does not see deletes |
+
+ReData fits when the destination is a local DuckDB file, the sources are a few databases, files or APIs, and you want the sync state, schema-drift rules and run log in one place you can read.
+
 ## Measured performance
 
 These are recorded runs on two specific machines, each of which passed its correctness checks. They are not a promise about other hardware. The full tables, raw result files and caveats are in [benchmarks/RESULTS.md](benchmarks/RESULTS.md).
@@ -261,7 +275,7 @@ ReData runs in two ways:
 | --- | --- | --- |
 | How to open | Open `index.html`, or the GitHub Pages site | Run `start-engine.bat` (Windows) or `./start-engine.sh` (macOS / Linux) |
 | Where the data is processed | Inside the browser tab | DuckDB on your own computer |
-| Practical size | Up to 10 lakh rows (1,000,000) | Large files; a 1 crore row, 1.06 GB CSV imported and profiled in 12.8 s on a 4-vCPU CI runner ([results](benchmarks/RESULTS.md)) |
+| Practical size | Up to 1,000,000 rows | Large files; a 10-million-row, 1.06 GB CSV imported and profiled in 12.8 s on a 4-vCPU CI runner ([results](benchmarks/RESULTS.md)) |
 | File types | CSV, TSV, TXT, JSON / NDJSON, XLSX / XLS | Same, plus Parquet and load-by-path |
 | Install | Nothing | Python 3.9+ (the engine's packages are installed automatically on first run) |
 
@@ -269,7 +283,7 @@ GitHub Pages: Settings → Pages → Deploy from a branch → `main` → `/ (roo
 
 ### Large files: the local engine
 
-The browser keeps every row as a JavaScript object, so a tab runs out of memory and freezes long before 1 crore rows. The local engine moves the data into [DuckDB](https://duckdb.org) on your machine. The page then only receives what it shows: one page of rows, one chart's totals, one table of statistics.
+The browser keeps every row as a JavaScript object, so a tab runs out of memory and freezes long before 10 million rows. The local engine moves the data into [DuckDB](https://duckdb.org) on your machine. The page then only receives what it shows: one page of rows, one chart's totals, one table of statistics.
 
 1. Install Python 3.9 or newer (on Windows tick **Add python.exe to PATH**).
 2. Double-click `start-engine.bat` (Windows) or run `./start-engine.sh` (macOS / Linux). The first run creates `engine/.venv` and installs the engine's packages; later runs start in a second.
@@ -282,17 +296,7 @@ The first run also installs the database drivers used by Connections; the launch
 
 Options: `--port 9000`, `--memory-limit 6GB`, `--threads 4`, `--workspace D:\redata-work`, `--no-browser`. The launch scripts run `redata serve`, so the same options work there.
 
-Measured import and query times for the engine are in [Measured performance](#measured-performance). The timings below were recorded in the v0.1.0 README on a 2-core cloud machine with a 1 crore row, 10 column CSV. That file and machine are no longer available, so they have not been reproduced; treat them as project-reported.
-
-| Step | Project-reported time |
-| --- | --- |
-| Import and profile every column | ~40 s |
-| Switch between any tabs | ~0.3 s |
-| Page, sort or filter the data explorer | 0.4–1.7 s |
-| Charts, t-test, regression, SQL | 0.3–1.5 s |
-| Group by 20 lakh distinct values | ~10 s |
-| Fill / dedupe / formula across all rows | 17–40 s |
-| Export the full dataset to CSV | ~9 s |
+Measured import and query times for the engine are in [Measured performance](#measured-performance).
 
 ### What the page includes
 
@@ -313,7 +317,6 @@ Measured import and query times for the engine are in [Measured performance](#me
 | Segments & funnel | Frequency and share breakdown by a categorical field |
 | Formula builder | Derived numeric columns using arithmetic and `[column name]` references |
 | Insights & reports | Export a Markdown analysis brief with metric snapshot, analyst notes and caveats |
-| Learning roadmap | A practice sequence inspired by Google, Microsoft and Meta learning paths |
 
 The included demonstration dataset is fictional and exists to make the interface usable immediately. Import a file to analyse your own data.
 
@@ -328,22 +331,7 @@ The included demonstration dataset is fictional and exists to make the interface
 
 ## Important analytical limitations
 
-ReData provides practical first-pass analysis, not a guarantee that data or conclusions are correct. Review definitions, sampling, missingness, outliers, joins, units, privacy, test assumptions, and business context. The frequency-based “Segments & funnel” view is **not** an ordered conversion funnel unless your categories encode funnel stages. Welch's t-test assumes independent samples, and correlation/regression does not imply causation. Browser-only mode is capped at 10 lakh rows; use the local engine for larger data. On data above 20 lakh rows, the engine shows distinct counts for very high-cardinality columns (such as IDs) as estimates, marked with ≈. The scatter plot draws a random sample of 5,000 points, while correlation and regression use every row.
-
-## Learning references
-
-These are external providers; ReData is independent and is not affiliated with or endorsed by them.
-
-- [Google Data Analytics Professional Certificate](https://www.coursera.org/professional-certificates/google-data-analytics)
-- [Google Advanced Data Analytics Professional Certificate](https://www.coursera.org/professional-certificates/google-advanced-data-analytics)
-- [Meta Marketing Analytics Professional Certificate](https://www.coursera.org/professional-certificates/facebook-marketing-analytics)
-- [Microsoft Power BI Data Analyst](https://learn.microsoft.com/en-us/credentials/certifications/power-bi-data-analyst/)
-- [Microsoft Learn](https://learn.microsoft.com/en-us/training/)
-
-## Design direction
-
-ReData uses a warm, light analytics-workbench aesthetic: a persistent sidebar, clear quality signals, readable charts and dense-but-breathable tool panels. The product direction was also laid out in a Higgsfield canvas: [ReData — Product UI direction](https://higgsfield.ai/canvas/a2d72e11-6257-47e5-bcd4-1e3465b4b5c7).
-
+ReData provides practical first-pass analysis, not a guarantee that data or conclusions are correct. Review definitions, sampling, missingness, outliers, joins, units, privacy, test assumptions, and business context. The frequency-based “Segments & funnel” view is **not** an ordered conversion funnel unless your categories encode funnel stages. Welch's t-test assumes independent samples, and correlation/regression does not imply causation. Browser-only mode is capped at 1,000,000 rows; use the local engine for larger data. On data above 2,000,000 rows, the engine shows distinct counts for very high-cardinality columns (such as IDs) as estimates, marked with ≈. The scatter plot draws a random sample of 5,000 points, while correlation and regression use every row.
 
 ## Research and reproducibility
 
@@ -357,7 +345,6 @@ ReData uses a warm, light analytics-workbench aesthetic: a persistent sidebar, c
 - [Release and DOI readiness](docs/RELEASE_READINESS.md) — release gates, required human review, and the Zenodo archival sequence.
 - [Release notes template](docs/RELEASE_NOTES_TEMPLATE.md) — evidence-first release notes with explicit limitations and DOI placeholders.
 
-
 ## Citing ReData
 
 **Archived release:** ReData v0.1.0 — Analytics Workspace  
@@ -366,7 +353,6 @@ ReData uses a warm, light analytics-workbench aesthetic: a persistent sidebar, c
 **Source repository:** [theraghavraman/redata](https://github.com/theraghavraman/redata)
 
 The DOI identifies the archived v0.1.0 release, which predates the `redata` package and command line. For citation, prefer the DOI for the exact archived version you used; use the repository link for the development version.
-
 
 ## Licensing and third-party notices
 
