@@ -1,5 +1,7 @@
 # ReData
 
+[![Regression tests](https://github.com/theraghavraman/redata/actions/workflows/full-regression-tests.yml/badge.svg)](https://github.com/theraghavraman/redata/actions/workflows/full-regression-tests.yml)
+
 **Keeping a copy of a database table, file drop or API current means tracking where the last sync stopped and surviving schema changes; ReData does both and lands the data in DuckDB.**
 
 ## Architecture
