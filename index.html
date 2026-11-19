@@ -928,27 +928,6 @@
       .mobile-overlay {
         display: none;
       }
-      .learning-path {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 13px;
-      }
-      .learning-card {
-        background: #fffdf9;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 16px;
-      }
-      .learning-card h3 {
-        font: 800 13px Manrope;
-        margin: 9px 0 7px;
-      }
-      .learning-card p {
-        color: #817b70;
-        line-height: 1.55;
-        font-size: 11px;
-        margin: 0;
-      }
       .checkline {
         display: flex;
         gap: 8px;
@@ -976,9 +955,6 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .kpi-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .learning-path {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
@@ -1072,9 +1048,6 @@
         }
         .controls .field {
           min-width: calc(50% - 10px);
-        }
-        .learning-path {
-          grid-template-columns: 1fr;
         }
       }
       @media (max-width: 390px) {
@@ -1249,13 +1222,10 @@
           <span class="nav-icon">ƒ</span>Formula builder
         </button>
       </nav>
-      <div class="sidebar-label">DELIVER & LEARN</div>
-      <nav class="nav" aria-label="Deliver and learn">
+      <div class="sidebar-label">DELIVER</div>
+      <nav class="nav" aria-label="Deliver">
         <button class="nav-btn" data-view="report">
-          <span class="nav-icon">▧</span>Insights & reports</button
-        ><button class="nav-btn" data-view="learning">
-          <span class="nav-icon">✧</span>Learning roadmap
-        </button>
+          <span class="nav-icon">▧</span>Insights & reports</button>
       </nav>
       <div class="sidebar-bottom">
         <div class="privacy-card" id="runtimeCard">
@@ -1585,7 +1555,6 @@
           funnels: "Segments & funnel",
           formulas: "Formula builder",
           report: "Insights & reports",
-          learning: "Learning roadmap",
           connections: "Connections",
         };
         const desc = {
@@ -1615,8 +1584,6 @@
             "Add a derived column using a safe arithmetic expression based on existing numeric columns.",
           report:
             "Create an exportable analysis brief with key metrics, quality checks and observations.",
-          learning:
-            "A roadmap inspired by Google, Microsoft and Meta analytics learning paths, expanded with statistics and data engineering.",
           space:
             "Explore science, imagery, planetary, telemetry, navigation and engineering formats used across international space programmes. Inspect supported files locally and learn what can be validated in your browser.",
         };
@@ -1634,7 +1601,6 @@
           funnels: ["▽", "#e9e2fb"],
           formulas: ["ƒ", "#dff1e4"],
           report: ["▧", "#ffe6d2"],
-          learning: ["✧", "#e3ebfa"],
           connections: ["⇄", "#e0eafa"],
         };
         // ------------------------------------------------------------------
@@ -2234,7 +2200,7 @@
               : "A quick aggregate from the active dataset") +
             '</div></div><span class="tag">LIVE SUMMARY</span></div><div class="panel-body"><div class="chart-wrap"><div class="bar-chart">' +
             bars +
-            '</div><div class="chart-legend"><span><i class="legend-dot" style="background:#e5793e"></i>Aggregate value</span><span class="muted">Sample view · illustrative data</span></div></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:13px"><button class="btn small" data-view="visualize">Open chart builder ↗</button><button class="btn small" data-view="statistics">Explore statistics</button></div></div></section><section class="panel"><div class="panel-head"><div><h2 class="panel-title">A reliable analysis flow</h2><div class="panel-sub">From raw file to defensible decisions</div></div><span class="tag">FIELD GUIDE</span></div><div class="panel-body"><div class="flow-list"><div class="flow-item"><div class="flow-icon" style="background:#ffe7d3">↥</div><div class="flow-copy"><strong>1. Bring the data in</strong><p>Check source, grain, date range and definitions.</p></div><span class="flow-state">START</span></div><div class="flow-item"><div class="flow-icon" style="background:#e0eafa">⌕</div><div class="flow-copy"><strong>2. Validate and clean</strong><p>Profile missingness, duplicates, types and outliers.</p></div></div><div class="flow-item"><div class="flow-icon" style="background:#dff1e4">∑</div><div class="flow-copy"><strong>3. Analyse with intent</strong><p>Explore, segment, test and quantify uncertainty.</p></div></div><div class="flow-item"><div class="flow-icon" style="background:#f8edb8">▧</div><div class="flow-copy"><strong>4. Communicate the result</strong><p>Explain impact, caveats and next actions.</p></div></div></div></div></section></div><div class="section-head"><div><h2>Pick up a tool</h2><p>Purpose-built studios for common analytics tasks.</p></div><button class="btn small" data-view="learning">View learning roadmap ↗</button></div><div class="grid quick-grid">' +
+            '</div><div class="chart-legend"><span><i class="legend-dot" style="background:#e5793e"></i>Aggregate value</span><span class="muted">Sample view · illustrative data</span></div></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:13px"><button class="btn small" data-view="visualize">Open chart builder ↗</button><button class="btn small" data-view="statistics">Explore statistics</button></div></div></section><section class="panel"><div class="panel-head"><div><h2 class="panel-title">A reliable analysis flow</h2><div class="panel-sub">From raw file to defensible decisions</div></div><span class="tag">FIELD GUIDE</span></div><div class="panel-body"><div class="flow-list"><div class="flow-item"><div class="flow-icon" style="background:#ffe7d3">↥</div><div class="flow-copy"><strong>1. Bring the data in</strong><p>Check source, grain, date range and definitions.</p></div><span class="flow-state">START</span></div><div class="flow-item"><div class="flow-icon" style="background:#e0eafa">⌕</div><div class="flow-copy"><strong>2. Validate and clean</strong><p>Profile missingness, duplicates, types and outliers.</p></div></div><div class="flow-item"><div class="flow-icon" style="background:#dff1e4">∑</div><div class="flow-copy"><strong>3. Analyse with intent</strong><p>Explore, segment, test and quantify uncertainty.</p></div></div><div class="flow-item"><div class="flow-icon" style="background:#f8edb8">▧</div><div class="flow-copy"><strong>4. Communicate the result</strong><p>Explain impact, caveats and next actions.</p></div></div></div></div></section></div><div class="section-head"><div><h2>Pick up a tool</h2><p>Purpose-built studios for common analytics tasks.</p></div></div><div class="grid quick-grid">' +
             (ENGINE
               ? toolCard(
                   "connections",
@@ -2610,10 +2576,10 @@
             esc(desc.import) +
             '</p></div></div>' +
             (ENGINE
-              ? '<div class="notice green"><b>Local engine connected.</b> Files are loaded by DuckDB on this computer, so crores of rows work. Nothing is sent to the internet. CSV, TSV, TXT, JSON, NDJSON, Parquet and Excel are supported.</div>'
+              ? '<div class="notice green"><b>Local engine connected.</b> Files are loaded by DuckDB on this computer, so tens of millions of rows work. Nothing is sent to the internet. CSV, TSV, TXT, JSON, NDJSON, Parquet and Excel are supported.</div>'
               : '<div class="notice blue"><b>Browser-only mode:</b> files are parsed inside this tab, which handles up to ' +
                 fmt(BROWSER_ROW_LIMIT) +
-                " rows. For larger files (crores of rows), start the <b>ReData local engine</b> on your computer (see the README) and open ReData from the address it prints.</div>") +
+                " rows. For larger files (tens of millions of rows), start the <b>ReData local engine</b> on your computer (see the README) and open ReData from the address it prints.</div>") +
             '<div class="panel workspace-panel"><div class="dropzone" id="dropzone"><div class="drop-icon">↥</div><h3>Drop a dataset here</h3><p>Choose a file and tell ReData whether the first row contains headers. For a headerless file, assign column names before importing.</p><button class="btn orange" data-action="choose-file">Choose a file</button><div class="upload-types">CSV · TSV · JSON · TXT · XLSX · XLS' +
             (ENGINE ? " · PARQUET" : "") +
             "</div></div>" +
@@ -3913,7 +3879,7 @@
           );
         }
         // Welch's t-test only needs n, mean and sample variance per group, so
-        // the engine can summarise crores of rows and send three numbers each.
+        // the engine can summarise tens of millions of rows and send three numbers each.
         function welchFromStats(A, B) {
           if (!A || !B || A.n < 2 || B.n < 2)
             throw Error(
@@ -4172,86 +4138,6 @@
             '</div><div class="panel workspace-panel"><div class="field"><label for="sqlEditor">SQL query</label><textarea class="sql-editor" id="sqlEditor" spellcheck="false">SELECT region, SUM(revenue) AS total_revenue, COUNT(*) AS orders\nFROM data\nGROUP BY region\nORDER BY total_revenue DESC;</textarea></div><div class="sql-suggestions"><button class="code-chip" data-sql="SELECT * FROM data LIMIT 50;">SELECT sample</button><button class="code-chip" data-sql="SELECT COUNT(*) AS row_count FROM data;">COUNT rows</button><button class="code-chip" data-sql="SELECT region, AVG(revenue) AS avg_revenue FROM data GROUP BY region;">GROUP BY</button><button class="code-chip" data-sql="SELECT * FROM data WHERE revenue IS NULL;">Find nulls</button></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn orange" data-action="run-sql" id="runSqlBtn" aria-keyshortcuts="Control+Enter">▶ Run query</button><button class="btn" data-action="cancel-sql" id="cancelSqlBtn" hidden>■ Cancel</button><span class="hint">' +
             (engineActive ? "DuckDB · local engine · full dataset" : "SQLite · in-memory · current dataset snapshot") +
             '</span></div><div id="sqlMessage" role="status" aria-live="polite"></div><div id="sqlHost" style="margin-top:12px"><div class="empty">Run a query to see results.</div></div></div>'
-          );
-        }
-        function learningTemplate() {
-          const items = [
-            [
-              "01",
-              "Analytics foundations",
-              "Frame a business question, identify stakeholders, distinguish population from sample, and define a measurable outcome.",
-              "Google Data Analytics · spreadsheets · analytical thinking",
-            ],
-            [
-              "02",
-              "Prepare & clean data",
-              "Collect, profile, validate, clean, standardize types, treat missing values deliberately, and document assumptions.",
-              "SQL · Excel / Sheets · data quality",
-            ],
-            [
-              "03",
-              "Explore with SQL",
-              "Filtering, joins, aggregation, CASE, CTEs, subqueries, window functions, data modelling and query plans.",
-              "PostgreSQL / BigQuery / SQL Server",
-            ],
-            [
-              "04",
-              "Visualize & communicate",
-              "Choose effective encodings, avoid misleading scales, build dashboards, write concise findings and recommendations.",
-              "Power BI · Tableau · Looker Studio",
-            ],
-            [
-              "05",
-              "Statistics & experiments",
-              "Distributions, confidence intervals, sampling, hypothesis tests, effect size, power, A/B testing and causal limits.",
-              "Google Advanced Analytics · Meta Marketing Analytics",
-            ],
-            [
-              "06",
-              "Regression & forecasting",
-              "Correlation, linear/logistic models, residual diagnostics, time series and honest validation. Learn assumptions before algorithms.",
-              "Python · pandas · scipy · statsmodels",
-            ],
-            [
-              "07",
-              "Business & product analytics",
-              "Funnels, cohorts, retention, segmentation, acquisition channels, attribution basics, unit economics and metric design.",
-              "Meta Marketing Analytics · product metrics",
-            ],
-            [
-              "08",
-              "Data engineering foundations",
-              "ETL / ELT, dimensional models, warehouse/lakehouse, orchestration, tests, lineage, privacy and reproducibility.",
-              "dbt · BigQuery · Snowflake · Databricks",
-            ],
-            [
-              "09",
-              "Advanced analytics practice",
-              "Design a reproducible end-to-end project, challenge the assumptions, quantify uncertainty, and present a decision-ready report.",
-              "Portfolio project · code review · stakeholder brief",
-            ],
-          ];
-          return (
-            '<div class="page-head"><div><div class="eyebrow">LEARN THE CRAFT</div><h1 class="page-title">Learning roadmap<span style="color:var(--orange)">.</span></h1><p class="page-subtitle">' +
-            esc(desc.learning) +
-            '</p></div></div><div class="notice blue">This is an original learning sequence, not an official Google, Microsoft, Meta or Coursera curriculum. Provider offerings can change. Use their current official pages to confirm content, pricing and credentials.</div><div class="learning-path">' +
-            items
-              .map(
-                (it) =>
-                  '<article class="learning-card"><span class="tag">' +
-                  it[0] +
-                  "</span><h3>" +
-                  it[1] +
-                  "</h3><p>" +
-                  it[2] +
-                  '</p><div class="hint" style="margin-top:12px">' +
-                  it[3] +
-                  '</div><label class="checkline"><input type="checkbox" data-progress="' +
-                  it[0] +
-                  '">Mark this milestone as practised</label></article>',
-              )
-              .join("") +
-            '</div><div class="section-head"><div><h2>Official learning references</h2><p>Reference providers, not product endorsements.</p></div></div><div class="panel workspace-panel"><p><a href="https://www.coursera.org/professional-certificates/google-data-analytics" target="_blank" rel="noopener">Google Data Analytics Professional Certificate ↗</a></p><p><a href="https://www.coursera.org/professional-certificates/google-advanced-data-analytics" target="_blank" rel="noopener">Google Advanced Data Analytics Professional Certificate ↗</a></p><p><a href="https://www.coursera.org/professional-certificates/facebook-marketing-analytics" target="_blank" rel="noopener">Meta Marketing Analytics Professional Certificate ↗</a></p><p><a href="https://learn.microsoft.com/en-us/credentials/certifications/power-bi-data-analyst-associate/" target="_blank" rel="noopener">Microsoft Power BI Data Analyst ↗</a></p><p><a href="https://learn.microsoft.com/en-us/training/" target="_blank" rel="noopener">Microsoft Learn ↗</a></p></div>'
           );
         }
         function reportTemplate() {
@@ -4911,7 +4797,6 @@
             funnels: funnelsTemplate,
             formulas: formulaTemplate,
             report: reportTemplate,
-            learning: learningTemplate,
             connections: connectionsTemplate,
           };
           try {
@@ -4940,7 +4825,7 @@
             $("#runtimeNote").textContent = ENGINE
               ? engineActive
                 ? "DuckDB on this computer holds the dataset. Only small results reach this tab, and nothing leaves your machine."
-                : "DuckDB is running on this computer. Import a file to analyse crores of rows. Nothing leaves your machine."
+                : "DuckDB is running on this computer. Import a file to analyse tens of millions of rows. Nothing leaves your machine."
               : "Your dataset is processed in this browser (up to " +
                 fmt(BROWSER_ROW_LIMIT) +
                 " rows). ReData does not upload files to a server. Start the local engine for larger files.";

@@ -109,7 +109,7 @@ def render() -> str:
                 "server; the import and query work is the same DuckDB code either way."]
         out.append("")
     out += ["## What these results do not show", "",
-            "- They are not a reproduction of the older timings quoted from the v0.1.0 README (a 1 crore row, "
+            "- They are not a reproduction of the older timings quoted from the v0.1.0 README (a 10-million-row, "
             "723 MB file on a 2-core machine). That input and machine are not available.",
             "- Runs marked \"single run\" have no repeat, so they carry no estimate of run-to-run variation.",
             "- Browser-only mode is not measured here.",

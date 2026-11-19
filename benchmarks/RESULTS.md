@@ -34,7 +34,7 @@ These runs used the previous `http.server` front end. They have not been repeate
 
 ## What these results do not show
 
-- They are not a reproduction of the older timings quoted from the v0.1.0 README (a 1 crore row, 723 MB file on a 2-core machine). That input and machine are not available.
+- They are not a reproduction of the older timings quoted from the v0.1.0 README (a 10-million-row, 723 MB file on a 2-core machine). That input and machine are not available.
 - Runs marked "single run" have no repeat, so they carry no estimate of run-to-run variation.
 - Browser-only mode is not measured here.
 - No remote database, S3 or REST source is measured.
